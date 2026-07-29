@@ -7,7 +7,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task, AskUserQuestion
 
 # Fix — diagnose before treat
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contract is binding, especially: diagnose before treat, admin work handed to the user, verify after fix. Read `~/ITGuy/machine.md` if it exists — Known Quirks may already explain the symptom. If `uname` is not `Darwin`, say this version supports Mac only and stop.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contract is binding, especially: diagnose before treat, admin work handed to the user, verify after fix. Read `~/ITGuy/machine.md` if it exists — Live Conclusions may already explain the symptom. If `uname` is not `Darwin`, say this version supports Mac only and stop.
 
 ## Step 1: Restate the symptom
 
@@ -15,7 +15,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contra
 
 ## Step 2: Gather evidence
 
-Dispatch the `it-guy-pro:diagnostician` agent (via Task) scoped to the areas the symptom implicates (slowness → memory, CPU, disk, startup; noise/heat → CPU, battery; space → disk). Cross-check its findings against the profile's Known Quirks.
+Dispatch the `it-guy-pro:diagnostician` agent (via Task) scoped to the areas the symptom implicates (slowness → memory, CPU, disk, startup; noise/heat → CPU, battery; space → disk). Cross-check its findings against the profile's Live Conclusions.
 
 ## Step 3: Present the diagnosis
 
