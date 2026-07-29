@@ -7,32 +7,61 @@
 # noise and zero token cost.
 
 ROOT="$HOME/ITGuy"
-[ -f "$ROOT/machine.md" ] || exit 0
+
+# Refuse symlinks. `-f` is true for a symlink to a regular file, so a symlink
+# planted at visits.log or machine.md would make this hook read an arbitrary
+# user-readable file — an API key file, say — and print its tail into model
+# context labelled as ordinary log data.
+[ -f "$ROOT/machine.md" ] && [ ! -L "$ROOT/machine.md" ] || exit 0
+[ -r "$ROOT/machine.md" ] || exit 0
+
+# Everything below is user-editable content heading into the model's context.
+# Strip the characters that let a value escape the sentence it sits in, cap
+# the length, and keep the byte-oriented tools in a fixed locale so a
+# multi-byte value cannot be cut mid-sequence into invalid UTF-8.
+export LC_ALL=C.UTF-8 2>/dev/null || true
+clean() { tr -d '\000-\037"\\`$' | tr -s ' ' | cut -c1-60; }
+
+# A form of address and a language name are prose fragments, not syntax. Strip
+# the punctuation an injected instruction needs to form clauses and commands —
+# quotes, backslash, backtick, dollar, and the sentence/command separators —
+# while keeping every letter, in any script.
+#
+# Deliberately a blacklist, not a whitelist: an [:alnum:] whitelist runs
+# byte-wise here and would eat non-ASCII names, mangling "Zoe" with a
+# diaeresis down to "Zo" — silently breaking the exact users the language
+# feature exists to serve.
+name_clean() { tr -d '\000-\037"\\`$:;|&<>{}()*!?=' | tr -s ' ' | cut -c1-40; }
 
 last="none recorded"
-if [ -f "$ROOT/visits.log" ]; then
-  # Strip control characters and truncate — this line is user-editable
-  # file content headed into model context, so treat it as data.
-  line="$(tail -1 "$ROOT/visits.log" 2>/dev/null | tr -d '\000-\010\013\014\016-\037' | cut -c1-200)"
+if [ -f "$ROOT/visits.log" ] && [ ! -L "$ROOT/visits.log" ] && [ -r "$ROOT/visits.log" ]; then
+  # CR becomes a newline rather than being deleted: a CR-terminated file has
+  # no LF at all, so `tail -1` would otherwise return the WHOLE file and let a
+  # planted log choose which characters land in context. Quotes and
+  # backslashes go too — they are how a value escapes its own sentence.
+  line="$(tail -c 8192 "$ROOT/visits.log" 2>/dev/null | tr '\r' '\n' | tail -1 \
+          | tr -d '\000-\037"\\`$' | cut -c1-160)"
   [ -n "$line" ] && last="$line"
 fi
 
 tools=0
 if [ -f "$ROOT/toolbox.json" ]; then
   # Occurrence count, not line count — the registry may be minified JSON.
-  tools="$(grep -o '"name"' "$ROOT/toolbox.json" 2>/dev/null | wc -l | tr -d ' ')"
+  tools="$(grep -c '^[[:space:]]*"name"[[:space:]]*:' "$ROOT/toolbox.json" 2>/dev/null | tr -d ' ')"
+  [ "${tools:-0}" -gt 999 ] 2>/dev/null && tools=999
 fi
 
 # Summon word and the user's preferred name — user-editable file content,
 # so sanitize before it reaches model context: strip control chars and
 # spaces (summon is a single token), cap lengths, enforce the leading
 # underscore on the summon; fall back to the default on anything odd.
-summon="$(grep -m1 '^Summon: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^Summon: //' | tr -d '\000-\037 ' | cut -c1-20)"
-case "$summon" in _?*) ;; *) summon="_it" ;; esac
+summon="$(grep -m1 '^Summon: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^Summon: //' | tr -d '\000-\037 "\\`$' | cut -c1-20)"
+# Anything that is not a single underscore-led word falls back to the default.
+case "$summon" in _[A-Za-z0-9_-]*) ;; *) summon="_it" ;; esac
 # Strip the trailing provenance tag — "(you told me YYYY-MM-DD)" is schema
 # bookkeeping, not part of what the user is called.
-callme="$(grep -m1 '^- Call me: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^- Call me: //; s/ *([^)]*)$//' | tr -d '\000-\037' | cut -c1-40)"
-lang="$(grep -m1 '^- Language: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^- Language: //; s/ *([^)]*)$//' | tr -d '\000-\037' | cut -c1-40)"
+callme="$(grep -m1 '^- Call me: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^- Call me: //; s/ *([^)]*)$//' | name_clean)"
+lang="$(grep -m1 '^- Language: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^- Language: //; s/ *([^)]*)$//' | name_clean)"
 
 # Conclusions whose "retest by YYYY-MM-DD" date has passed. ISO dates sort
 # lexically, so a string comparison against today needs no date arithmetic.

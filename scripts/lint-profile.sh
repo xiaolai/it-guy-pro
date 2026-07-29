@@ -35,7 +35,11 @@ findings() { c=$(wc -c < "$COUNT" | tr -d ' '); echo $((c - 1)); }
 
 say() { printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4"; bump; }
 
-[ -f "$PROFILE" ] || { echo "INFO|no-profile|$PROFILE|No profile yet — run /it-guy-pro:onboard"; rm -f "$COUNT"; exit 2; }
+[ -f "$PROFILE" ] || { echo "INFO|no-profile|$PROFILE|No profile yet — run /it-guy-pro:onboard"; rm -f "$COUNT" "$TMPOUT"; exit 2; }
+# Unverifiable is not the same as fine. Without this the awk passes fail, the
+# comparisons error, and the script exits 0 on a profile it never read.
+[ -r "$PROFILE" ] || { echo "ERROR|unreadable|machine.md|Profile exists but cannot be read, so nothing below was actually checked"; rm -f "$COUNT" "$TMPOUT"; exit 1; }
+[ -L "$PROFILE" ] && echo "WARN|symlinked-profile|machine.md|Profile is a symlink; confirm it points where you expect" && bump
 
 # ---------- Secrets that must never be stored (highest severity) ----------
 # The schema forbids these; until now nothing verified it. Scans history too,
@@ -139,7 +143,7 @@ done
 # A linter that mutates correct data is worse than no linter.
 bad_labels="$(awk '
   /^## / { sec=substr($0,4); next }
-  sec ~ /^(Hardware|System|Owner|Private Connection)$/ && /^- [^:]{1,24}:/ { print NR ":" $0 }
+  sec ~ /^(Hardware|System|Owner|Conventions|Private Connection)$/ && /^- [^:]{1,24}:/ { print NR ":" $0 }
 ' "$PROFILE" 2>/dev/null | LC_ALL=C grep '^[0-9]*:- [^:]*[^ -~][^:]*:' | cut -d: -f1)"
 for ln in $bad_labels; do
   say ERROR non-ascii-label "machine.md:$ln" "Field label contains non-ASCII characters — values may be in any language, labels may not"
@@ -152,13 +156,13 @@ lines=$(wc -l < "$PROFILE" | tr -d ' ')
 # ---------- Ledger integrity ----------
 if [ -f "$LEDGER" ]; then
   ln=0
-  while IFS= read -r l; do
+  while IFS= read -r l || [ -n "$l" ]; do
     ln=$((ln+1)); [ -z "$l" ] && continue
     case "$l" in '{'*'}') ;; *) say ERROR bad-ledger-line "ledger.jsonl:$ln" "Not a JSON object"; continue;; esac
     for k in ts event subject; do
       case "$l" in *"\"$k\""*) ;; *) say ERROR ledger-missing-key "ledger.jsonl:$ln" "Missing required key: $k";; esac
     done
-    ev="$(printf '%s' "$l" | sed -n 's/.*"event"[[:space:]]*:[[:space:]]*"\([a-z]*\)".*/\1/p')"
+    ev="$(printf '%s' "$l" | sed -n 's/.*"event"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
     case "$ev" in learned|confirmed|changed|retested|demoted|corrected|redacted|'') ;; *) say WARN ledger-unknown-event "ledger.jsonl:$ln" "Unrecognised event '$ev'";; esac
   done < "$LEDGER"
 

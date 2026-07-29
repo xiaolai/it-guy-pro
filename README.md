@@ -91,14 +91,14 @@ it-guy-pro/
 │                        server/client setup, troubleshooting, legal boundaries
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
 ├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh
-└── tests/               guard_test.py (52 cases), memory_test.py (37 cases)
+└── tests/               guard_test.py (59 cases), memory_test.py (37 cases)
 ```
 
 ## Checks that actually run
 
 Two things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices:
 
-- **`scripts/guard.sh`** inspects every shell command before it runs — 52 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
+- **`scripts/guard.sh`** inspects every shell command before it runs — 59 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
 - **`scripts/lint-profile.sh`** audits the IT guy's own memory — 31 of the 37 memory-suite cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
 Run them yourself: `python3 tests/guard_test.py && python3 tests/memory_test.py`.

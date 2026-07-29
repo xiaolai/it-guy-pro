@@ -76,6 +76,93 @@ def classify(proc):
         return "allow"
     return f"unexpected(rc={proc.returncode}, out={proc.stdout[:80]!r})"
 
+PROTECTED = ["Documents", "Desktop", "Downloads", "Pictures", "Movies", "Music"]
+
+# Every way a careful writer spells the same home-rooted path. The guard used
+# to match the raw string, so the *correctly quoted* forms — the ones every
+# shell style guide demands — silently passed while the sloppy form denied.
+SPELLINGS = [
+    'rm -f $HOME/{d}/x.pdf',
+    'rm -f "$HOME"/{d}/x.pdf',
+    'rm -f ${{HOME}}/{d}/x.pdf',
+    'rm -f ~/{d}/x.pdf',
+    'rm -f ~/"{d}"/x.pdf',
+    "rm -f '/Users/joker/{d}/x.pdf'",
+    'rm -f ~//{d}/x.pdf',
+    'rm -f ~/./{d}/x.pdf',
+]
+
+
+def guard(cmd, desc="x"):
+    payload = json.dumps({"session_id": "test", "tool_name": "Bash",
+                          "tool_input": {"command": cmd, "description": desc}})
+    return subprocess.run(["bash", GUARD], input=payload,
+                          capture_output=True, text=True, timeout=30)
+
+
+def t_path_spelling_matrix():
+    bad = [tpl.format(d=d) for d in PROTECTED for tpl in SPELLINGS
+           if guard(tpl.format(d=d)).returncode != 2]
+    assert not bad, "quoted/normalised spellings bypassed the guard:\n  " + "\n  ".join(bad)
+
+
+def t_unresolvable_targets():
+    for cmd in ["rm -f ~/{Documents,Desktop}/x.pdf", "rm -f ~/Doc*/tax-return.pdf",
+                "rm -f ~/D?cuments/tax.pdf", "rm -f ~/Downloads/../Documents/x.pdf"]:
+        assert guard(cmd).returncode == 2, f"unresolvable target allowed: {cmd}"
+
+
+def t_home_wipe_is_deny():
+    for cmd in ["rm -rf ~/", "rm -rf ~", "rm -rf $HOME", 'rm -rf "$HOME"']:
+        assert guard(cmd).returncode == 2, f"home wipe not denied: {cmd}"
+
+
+def t_destruction_by_outcome():
+    for cmd in ["truncate -s 0 ~/Documents/thesis.docx", "unlink ~/Documents/thesis.docx",
+                ": > ~/ITGuy/ledger.jsonl", "cat /dev/null > ~/ITGuy/machine.md",
+                "echo -n > ~/Pictures/wedding.jpg"]:
+        assert guard(cmd).returncode == 2, f"silent destruction allowed: {cmd}"
+
+
+def t_ssh_exemption_single_line_only():
+    r = guard("ssh myvps uptime\nsudo rm -rf /System")
+    assert r.returncode == 2, (
+        "a multi-line script had its LOCAL sudo downgraded to ask, with the false "
+        f"reason that it runs remotely:\n{r.stdout}")
+
+
+def t_deny_reasons_actionable():
+    # Every deny reason could previously have been the word "no" and the whole
+    # suite still passed. The reason is the product: it tells Claude what to do.
+    for cmd, needle in [("rm ~/Documents/draft.txt", "trash"),
+                        ("sudo apt-get install x", "!"),
+                        ("diskutil eraseDisk APFS X disk2", "disk utility"),
+                        ("tmutil delete /Volumes/TM/x", "backup"),
+                        ("truncate -s 0 ~/Documents/a.docx", "trash"),
+                        ("rm -rf ~/", "home folder")]:
+        r = guard(cmd)
+        assert r.returncode == 2, f"expected deny: {cmd}"
+        assert needle in r.stderr.lower(), (
+            f"deny reason for {cmd!r} lacks guidance {needle!r}: {r.stderr.strip()[:120]}")
+
+
+def t_system_chmod_independently_covered():
+    # Previously only reached via a '..' path, so the rule could be deleted with
+    # the suite still green while chmod -R on /System became allowed.
+    r = guard("chmod -R 777 /System/Library")
+    assert r.returncode == 2, "recursive chmod on a system path was allowed"
+
+
+EXTRA = [
+    ("path spelling matrix (48 combinations)", t_path_spelling_matrix),
+    ("unresolvable targets denied", t_unresolvable_targets),
+    ("home wipe is deny, not ask", t_home_wipe_is_deny),
+    ("destruction judged by outcome, not verb", t_destruction_by_outcome),
+    ("ssh exemption is single-line only", t_ssh_exemption_single_line_only),
+    ("deny reasons carry actionable guidance", t_deny_reasons_actionable),
+    ("system-path chmod rule independently covered", t_system_chmod_independently_covered),
+]
+
 fails = 0
 for label, cmd, desc, expected in CASES:
     payload = json.dumps({
@@ -94,5 +181,15 @@ for label, cmd, desc, expected in CASES:
     else:
         print(f"{status}  {label} -> {got}")
 
-print(f"\n{len(CASES) - fails}/{len(CASES)} passed")
+total = len(CASES)
+for label, fn in EXTRA:
+    total += 1
+    try:
+        fn()
+        print(f"PASS  {label}")
+    except AssertionError as e:
+        fails += 1
+        print(f"FAIL  {label}\n      {e}")
+
+print(f"\n{total - fails}/{total} passed")
 sys.exit(1 if fails else 0)

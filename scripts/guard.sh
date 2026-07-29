@@ -45,6 +45,30 @@ if command -v osascript >/dev/null 2>&1; then
 fi
 [ -n "$cmd" ] || cmd="$payload"
 
+# Normalized copy, used ONLY for protected-path matching.
+#
+# Quoting, brace form, a named tilde, and redundant separators all defeat a
+# literal path regex while meaning precisely the same thing to the shell.
+# Worse, the quoted form is what every style guide demands and what a
+# careful writer emits — so matching the raw string made the guard
+# strongest against sloppy commands and weakest against deliberate ones,
+# which is exactly backwards. `rm -f "$HOME"/Documents/*.pdf` passed while
+# the unquoted twin was denied.
+norm="$(printf '%s' "$cmd" \
+  | tr -d '"\047\\' \
+  | sed -e 's/\${HOME}/~/g' \
+        -e 's/\$HOME/~/g' \
+        -e 's|~[a-zA-Z_][a-zA-Z0-9_.-]*/|~/|g' \
+        -e 's|/\./|/|g' \
+        -e 's|///*|/|g')"
+
+hitn() { printf '%s' "$norm" | grep -qE "$1"; }
+
+# A single-line command is required for the remote-ssh exemption below:
+# grep matches per line, so any `ssh …` line anywhere would otherwise
+# excuse a `sudo` on a completely different line of the same script.
+newlines="$(printf '%s' "$cmd" | tr -dc '\n' | wc -c | tr -d ' ')"
+
 deny() {
   echo "it-guy-pro guard: $1" >&2
   exit 2
@@ -71,7 +95,7 @@ PROT='(~|\$HOME|/Users/[^/[:space:]"'\'']+)/(Documents|Desktop|Downloads|Picture
 # starts with ssh and carries no locally-executed option: ProxyCommand and
 # LocalCommand run on THIS machine, so a sudo there is local escalation in
 # an ssh costume.
-if hit '^[[:space:]]*ssh[[:space:]]' && ! hiti '(proxycommand|localcommand)'; then
+if [ "$newlines" -eq 0 ] && hit '^[[:space:]]*ssh[[:space:]]' && ! hiti '(proxycommand|localcommand)'; then
   hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && ask \
     "This runs sudo on the remote server, not on this Mac. Confirm the target host with the user, and remember the guard cannot protect the far end."
 fi
@@ -127,18 +151,33 @@ hit '\.Trash' && hit '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
 # literal `~/Documents`). When a destructive verb is present, refuse to
 # guess what an indirect path resolves to.
 
-DESTRUCTIVE='((^|[^a-zA-Z0-9_])rm[[:space:]]|[[:space:]]-delete([[:space:]]|$)|xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)|(chmod|chown)[[:space:]]+-[a-zA-Z]*R)'
+DESTRUCTIVE='((^|[^a-zA-Z0-9_])(rm|unlink|truncate|shred|srm)[[:space:]]|[[:space:]]-delete([[:space:]]|$)|xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)|(chmod|chown)[[:space:]]+-[a-zA-Z]*R)'
 if hit "$DESTRUCTIVE"; then
-  hit '\.\.' && deny \
-    "Paths containing .. hide their real target from safety checks. Re-run with the fully resolved absolute path (no .. segments, no brace ranges)."
+  hitn '\.\.' && deny \
+    "Paths containing .. hide their real target from safety checks. Re-run with the fully resolved absolute path — no .. segments, no brace ranges, no wildcards in the folder name."
+  hitn '\{[^}]*,' && deny \
+    "Brace expansion hides how many targets this really has. Re-run once per explicit path so each one can be checked."
+  hitn '(~|/Users/[^/[:space:]]+)/[^/[:space:]]*[*?[][^/[:space:]]*/' && deny \
+    "A wildcard in the folder name means the guard cannot tell which folders this hits. Name the folder explicitly."
   hit '\$\(|`' && ask \
     "This delete/permission change builds its target indirectly, so the guard cannot verify what it points at. Confirm with the user, or re-run with explicit absolute paths."
 fi
 
+# Wiping the home directory itself. Previously this fell to the recursive-rm
+# ASK tier, one step *below* deleting a single file inside Documents.
+hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(~|/Users/[^/[:space:]]+)/?[[:space:]]*($|;|&)' && deny \
+  "That deletes the entire home folder. There is no version of this that is the right fix."
+
 # ---------- Tier 2: deny rm/find-delete/xargs-rm on user content ----------
 
-if hit "$PROT"; then
-  hit '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
+if hitn "$PROT"; then
+  # Destruction is an outcome, not a verb. Truncation and unlink leave no
+  # Trash copy at all, so they are stricter than rm, not looser.
+  hitn '(^|[^a-zA-Z0-9_])(truncate|unlink)[[:space:]]' && deny \
+    "That erases user content without leaving a Trash copy. Move it to the Trash instead — see the argv-form osascript recipe in the it-guy-pro macos-recipes skill."
+  hitn '(^|[^>])>[[:space:]]*(~|/Users/[^/[:space:]]+)/(Documents|Desktop|Downloads|Pictures|Movies|Music|Library|ITGuy)' && deny \
+    "Redirecting over a file truncates it with no Trash copy and no undo. Write to a new name, or move the old file to the Trash first."
+  hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
     "Never rm user content. Move it to the Trash instead so the user can undo — use the argv-form osascript Trash recipe in the it-guy-pro macos-recipes skill."
   hit '(^|[^a-zA-Z0-9_])find[[:space:]]' && hit '[[:space:]]-delete([[:space:]]|$)' && deny \
     "Never mass-delete user content with find. List the candidates, show them to the user, then move approved items to the Trash."
