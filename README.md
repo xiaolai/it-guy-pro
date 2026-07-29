@@ -42,6 +42,7 @@ The leading underscore is the trigger; the everyday word "it" never summons him,
 | `/it-guy-pro:automate "the chore"` | Describe a repetitive chore — get a reusable tool in your toolbox, with a double-clickable preview |
 | `/it-guy-pro:toolbox` | List, run, evolve, or remove the tools built for you |
 | `/it-guy-pro:backup` | "If this Mac died tonight, what would you lose?" — audit, setup, and a real restore drill |
+| `/it-guy-pro:network` | Fix slow Wi-Fi, connect your machines to each other, see what's on your network, secure it, and get honest advice on whether a new router would help at all |
 | `/it-guy-pro:open-internet` | Build and maintain your own private server for unrestricted access — buy it, configure it, connect, and fix it when it's blocked |
 | `/it-guy-pro:profile` | Show or edit everything the IT guy remembers about this machine |
 
@@ -64,6 +65,8 @@ it-guy-pro/
 │   ├── machine-profile/ profile schema, visit log, undo manifests
 │   ├── toolbox-contract/ the micro-product contract and evolution ladder
 │   ├── macos-recipes/   exact diagnostic/action commands with their gotchas
+│   ├── home-network/    layer isolation, Wi-Fi tuning ladder, router buying,
+│                        connecting machines, security baseline
 │   └── open-internet/   architecture decision, protocol evidence, VPS buying,
 │                        server/client setup, troubleshooting, legal boundaries
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
