@@ -46,7 +46,13 @@ Exact commands, expected output shape, and gotchas. Use these verbatim rather th
 
 ### Behavioral observation (for onboarding)
 - Desktop items: `ls ~/Desktop 2>/dev/null | wc -l`
-- Screenshot pileup (English and Chinese naming): `find ~/Desktop -maxdepth 1 -type f \( -iname "screenshot*" -o -iname "screen shot*" -o -name "SCREENSHOT*" -o -name "SCREENCAP*" \) 2>/dev/null | wc -l` — use `-iname` and `-type f` so this matches the pattern-catalogue signal exactly; two commands reporting different counts for the same thing is how a user gets quoted a number that contradicts itself
+- Screenshot pileup — **match by metadata, never by filename**:
+  ```bash
+  mdfind -onlyin "$HOME/Desktop" 'kMDItemIsScreenCapture == 1' 2>/dev/null \
+    | while read -r p; do [ "$(dirname "$p")" = "$HOME/Desktop" ] && echo "$p"; done | wc -l
+  ```
+  macOS names screenshots in the system language, so any hardcoded filename pattern silently returns zero on a machine that is not set to English. Measured on a non-English Mac, an English-only glob found 0 while this metadata query found the real files. It also catches screenshots the user has renamed, which no filename pattern can.
+- Gotcha: this needs Spotlight indexing (`mdutil -s /`). If indexing is off, report that the count is unavailable rather than substituting a filename guess.
 - Downloads size and count: `du -sh ~/Downloads 2>/dev/null` and `ls ~/Downloads 2>/dev/null | wc -l`
 - Stale downloads: `find ~/Downloads -maxdepth 1 -atime +90 2>/dev/null | wc -l`
 - Dominant file types: `find ~/Documents ~/Desktop ~/Downloads -maxdepth 2 -type f 2>/dev/null | awk -F. 'NF>1 {print tolower($NF)}' | sort | uniq -c | sort -rn | head -8`

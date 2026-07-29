@@ -105,6 +105,29 @@ fi
 s="$(grep -m1 '^Summon: ' "$PROFILE" 2>/dev/null | sed 's/^Summon: //' | tr -d ' ')"
 [ -n "$s" ] && case "$s" in _?*) ;; *) say ERROR bad-summon "machine.md" "Summon word '$s' lacks the leading underscore that prevents accidental triggering";; esac
 
+# ---------- Structural labels must stay English ----------
+# A profile answered in another language must still carry English labels:
+# the digest greps for them, so a translated label fails silently. Detect
+# the damage by its symptom — a section exists but its labels are gone.
+for pair in "Owner:- Call me:|- Language:" "Hardware:- Model:" "System:- macOS:"; do
+  sec="${pair%%:*}"; want="${pair#*:}"
+  if grep -q "^## $sec" "$PROFILE" 2>/dev/null; then
+    body="$(awk -v s="## $sec" '$0==s{f=1;next} /^## /{f=0} f' "$PROFILE")"
+    hit=0
+    IFS='|'; for lbl in $want; do printf '%s' "$body" | grep -q "^$lbl" && hit=1; done; unset IFS
+    [ "$hit" -eq 0 ] && [ -n "$(printf '%s' "$body" | tr -d '[:space:]')" ] && \
+      say ERROR translated-label "machine.md" "Section '$sec' has content but none of its English field labels ($want) — labels must stay English or the session digest cannot read them"
+  fi
+done
+
+# Non-ASCII in a field label is the direct form of the same bug. LC_ALL=C
+# makes the byte range literal; the \xNN form is not portable to BSD grep
+# and silently matches nothing here.
+bad_labels="$(LC_ALL=C grep -n '^-\{0,1\} *[^:]*[^ -~][^:]*:' "$PROFILE" 2>/dev/null | cut -d: -f1)"
+for ln in $bad_labels; do
+  say ERROR non-ascii-label "machine.md:$ln" "Field label contains non-ASCII characters — values may be in any language, labels may not"
+done
+
 # ---------- Context cost ----------
 lines=$(wc -l < "$PROFILE" | tr -d ' ')
 [ "$lines" -gt 120 ] && say WARN over-cap "machine.md" "Profile is $lines lines (cap 120) — demote resolved items and expired conclusions to history.md"

@@ -39,7 +39,7 @@ Most homes in 2026 do not need Wi-Fi 7. Wi-Fi 6 is the sensible floor, and the h
 
 ## Boundaries — whose network
 
-1. **The user's own network only.** Home, or a network they administer. Confirm this before scanning anything. A café, an office, a campus, or a neighbour's network is out of scope even if it is technically reachable.
+1. **The user's own network only.** Home, or a network they administer. Confirm this before scanning anything. A coffee shop, an office, a campus, or a neighbour's network is out of scope even if it is technically reachable.
 2. **Discovery, not intrusion.** Listing devices on one's own LAN is ordinary IT work. Probing them for weaknesses, accessing another household member's machine without their knowledge, or reading traffic that is not the user's own is not — decline it.
 3. **No Wi-Fi attacks, ever.** No password cracking or recovery from captured handshakes, no deauthentication, no evil-twin or rogue AP setups, no captive-portal bypass. These are not grey areas, and no "but it's my own building" framing makes them acceptable — decline them outright.
 4. **"Someone is stealing my Wi-Fi" has one answer: rotate the password and move to WPA3.** Change the password, check the device list afterwards, done. Do not help identify, track, retaliate against, or block-by-MAC as a security measure (MAC filtering is trivially defeated and gives false confidence).

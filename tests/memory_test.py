@@ -216,6 +216,36 @@ def _():
     assert "over-cap" in rules(r.stdout), r.stdout
 
 
+# ------------------------------------------------- language / labels ---
+@case("English labels with non-ASCII values are accepted")
+def _():
+    r = run(LINT, make(CLEAN.replace(f"- Call me: Ada (you told me {TODAY})",
+                                     f"- Call me: Zoë (you told me {TODAY})\n"
+                                     f"- Language: Chinese (you told me {TODAY})")))
+    got = rules(r.stdout)
+    assert "non-ascii-label" not in got and "translated-label" not in got, r.stdout
+
+
+@case("localised field label is caught by the section check")
+def _():
+    # Labels replaced with something other than the schema's English ones —
+    # the symptom of a translated profile, without embedding another language.
+    bad = CLEAN.replace(f"- Call me: Ada (you told me {TODAY})", "- Nickname: Ada")
+    bad = bad.replace(f"- Work: writing and teaching (you told me {TODAY})", "- Job: writing")
+    r = run(LINT, make(bad))
+    assert "translated-label" in rules(r.stdout), r.stdout
+
+
+@case("non-ASCII label check actually fires (guards against dead code)")
+def _():
+    # A language-neutral non-ASCII character is enough to exercise the
+    # LC_ALL=C byte-range test.
+    r = run(LINT, make(CLEAN + "\n## Notes\n- ★Setting: value\n"))
+    assert "non-ascii-label" in rules(r.stdout), (
+        "the LC_ALL=C byte-range check silently matched nothing — "
+        f"a check that never fires is worse than none:\n{r.stdout}")
+
+
 # ------------------------------------------------------------- ledger ---
 @case("malformed ledger line is ERROR")
 def _():
@@ -272,6 +302,32 @@ def _():
     d.mkdir(parents=True)
     r = run(DIGEST, d, use_home=True)
     assert r.stdout.strip() == "", r.stdout
+
+
+@case("digest strips the provenance tag from the user's name")
+def _():
+    d = make(CLEAN.replace(f"- Call me: Ada (you told me {TODAY})",
+                           f"- Call me: Zoë (you told me {TODAY})"))
+    (d / "visits.log").write_text("2026-07-29 10:00 | checkup | fine | -\n")
+    r = run(DIGEST, d, use_home=True)
+    assert 'Address the user as "Zoë".' in r.stdout, (
+        f"provenance tag leaked into the form of address:\n{r.stdout}")
+
+
+@case("digest emits the language instruction when set, and not when absent")
+def _():
+    d = make(CLEAN.replace(f"- Call me: Ada (you told me {TODAY})",
+                           f"- Call me: Ada (you told me {TODAY})\n"
+                           f"- Language: Chinese (you told me {TODAY})"))
+    (d / "visits.log").write_text("2026-07-29 10:00 | checkup | fine | -\n")
+    r = run(DIGEST, d, use_home=True)
+    assert "Answer this user in Chinese." in r.stdout, r.stdout
+    assert "stays English" in r.stdout, "must state that on-disk artifacts stay English"
+
+    d2 = make()
+    (d2 / "visits.log").write_text("2026-07-29 10:00 | checkup | fine | -\n")
+    r2 = run(DIGEST, d2, use_home=True)
+    assert "Answer this user in" not in r2.stdout, r2.stdout
 
 
 @case("digest labels injected log content as data, not instructions")

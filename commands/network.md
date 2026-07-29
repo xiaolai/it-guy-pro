@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task, AskUserQuestion, WebSe
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/home-network/SKILL.md` first — the layer model, the fix ladder, and the boundaries are binding. Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` for the safety contract and `${CLAUDE_PLUGIN_ROOT}/skills/machine-profile/SKILL.md` before writing anything to the profile. Read `~/ITGuy/machine.md` if it exists. If `uname` is not `Darwin`, say this version supports Mac only and stop.
 
-**Confirm this is the user's own network before scanning anything — ask explicitly with AskUserQuestion, do not infer it from context.** The question is whether this is their home network or one they administer. If it is a café, an office, a campus, or shared accommodation they do not control, do the parts that only inspect this Mac and decline the rest — see the boundaries in the skill. Ask once per run, before the first discovery command, and never in place of it.
+**Confirm this is the user's own network before scanning anything — ask explicitly with AskUserQuestion, do not infer it from context.** The question is whether this is their home network or one they administer. If it is a coffee shop, an office, a campus, or shared accommodation they do not control, do the parts that only inspect this Mac and decline the rest — see the boundaries in the skill. Ask once per run, before the first discovery command, and never in place of it.
 
 **Network data is sensitive.** Device names, addresses, MAC addresses, and the SSID together describe a household. Follow the privacy rule in the skill: keep them out of `~/ITGuy/machine.md`, redact them from anything saved or shared, and warn the user before they paste a network report into a support chat or a forum.
 

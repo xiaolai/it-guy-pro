@@ -36,7 +36,7 @@ Explain this to the user in one sentence — "we're paying for the quality of th
 | **Oracle Always Free** | $0 | Unmeasured from China | **Free and unlimited** — best mechanism anywhere | **Do not recommend.** See below |
 | **Hetzner** | €5.49+ and €0.50/mo per IPv4; prices rose +30–50% (1 Apr 2026) then +113–175% on some lines (15 Jun 2026) | Frankfurt→Shanghai ~250 ms. Singapore exists but is their priciest region | Free swap in console | Wrong hemisphere |
 | **CloudCone** | ~$15/yr | LA | $2, conditional | **Avoid in 2026** — see below |
-| **Alibaba Cloud HK** | ~¥25/mo cheap plan | Cheap plan rides the *wrong* line; the China-optimised line is **232 CNY per Mbps/month** | — | **Actively warn against.** Account ties to real-name ID under PRC jurisdiction; the only provider with proxy-targeted enforcement reports |
+| **Alibaba Cloud HK** | ~CNY 25/mo cheap plan | Cheap plan rides the *wrong* line; the China-optimised line is **232 CNY per Mbps/month** | — | **Actively warn against.** Account ties to real-name verified ID under PRC jurisdiction; the only provider with proxy-targeted enforcement reports |
 
 ### Three providers that need explaining, not just listing
 

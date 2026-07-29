@@ -35,9 +35,15 @@ All signals are read-only and need no admin rights. Run them only where scanning
 ### `desktop-screenshots`
 
 ```bash
-find ~/Desktop -maxdepth 1 -type f \( -iname 'screenshot*' -o -iname 'screen shot*' -o -name 'SCREENSHOT*' -o -name 'SCREENCAP*' \) 2>/dev/null | wc -l
-find ~/Desktop -maxdepth 1 -type f \( -iname 'screenshot*' -o -iname 'screen shot*' -o -name 'SCREENSHOT*' -o -name 'SCREENCAP*' \) -mtime -30 2>/dev/null | wc -l
+mdfind -onlyin "$HOME/Desktop" 'kMDItemIsScreenCapture == 1' 2>/dev/null \
+  | while read -r p; do [ "$(dirname "$p")" = "$HOME/Desktop" ] && echo "$p"; done | wc -l
+mdfind -onlyin "$HOME/Desktop" 'kMDItemIsScreenCapture == 1 && kMDItemContentModificationDate >= $time.now(-2592000)' 2>/dev/null \
+  | while read -r p; do [ "$(dirname "$p")" = "$HOME/Desktop" ] && echo "$p"; done | wc -l
 ```
+
+**Match screenshots by metadata, never by filename.** macOS names them in the system language, so a hardcoded English pattern returns zero on a Mac set to any other language — the pattern would simply never fire for those users, silently. Measured on a non-English Mac: an English-only glob found 0 while the metadata query found the real files. Metadata also catches screenshots the user renamed, which no filename pattern can.
+
+Requires Spotlight indexing. If `mdutil -s /` reports indexing disabled, skip this pattern and say the count is unavailable — an unavailable optional suggestion costs nothing, whereas a fabricated count costs trust.
 
 **Threshold:** 20 total, and the 30-day count above zero. **Offer:** "I found N screenshots sitting on your Desktop — want me to build something that files them into Pictures by month, so they stop collecting there?"
 

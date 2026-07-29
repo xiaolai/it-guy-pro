@@ -58,9 +58,16 @@ If a request fails the test, do the task directly and say why no tool was built.
 ## Example
 <one real before → after example from the test run>
 
+## What this taught you
+<one or two sentences: the transferable idea behind this tool — "previewing
+before acting is why this is safe to run", "dates come from the photo's own
+metadata, not its filename" — not how the code works>
+
 ## History
 - YYYY-MM-DD: built (v1)
 ```
+
+The **What this taught you** section is the point of the toolbox, not a decoration. A user who accumulates twenty scripts has a folder; a user who accumulates twenty ideas about how work gets automated can decide what to build next. Keep it to the transferable idea and leave the implementation out — and write it in the user's language while the code, filenames, and tool name stay English.
 
 ## `.command` wrapper
 

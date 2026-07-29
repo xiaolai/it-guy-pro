@@ -49,7 +49,7 @@ Print `~/ITGuy/history.md` newest-first — what the IT guy used to believe and 
 
 ## update
 
-1. Use AskUserQuestion to find out what changed (options: my work/goals changed, my folder habits changed, change my name or the summon word, remove something that's wrong). A name change edits the Owner `- Call me:` line; a summon change edits the `Summon:` line — the new word must keep the leading underscore (that's the collision guard) — and confirms the convention in one sentence ("from now on it's `_mac`; takes effect next session").
+1. Use AskUserQuestion to find out what changed (options: my work/goals changed, change the language you answer me in, change my name or the summon word, remove something that's wrong). A language change edits the Owner `- Language:` line and takes effect next session; say so, and note that files and tool names stay English by design. A name change edits the Owner `- Call me:` line; a summon change edits the `Summon:` line — the new word must keep the leading underscore (that's the collision guard) — and confirms the convention in one sentence ("from now on it's `_mac`; takes effect next session").
 2. Apply the edit to the right section, respecting the schema's rules: 120-line cap, newest-first quirks, replace-in-place for facts, and never store passwords, serial numbers, IPs, or account emails — if the user offers one, decline it and say why in one sentence.
 3. Show a before/after diff of the changed lines.
 4. Append the visit line to `~/ITGuy/visits.log`.

@@ -44,7 +44,20 @@ The leading underscore is the trigger; the everyday word "it" never summons him,
 | `/it-guy-pro:backup` | "If this Mac died tonight, what would you lose?" — audit, setup, and a real restore drill |
 | `/it-guy-pro:network` | Fix slow Wi-Fi, connect your machines to each other, see what's on your network, secure it, and get honest advice on whether a new router would help at all |
 | `/it-guy-pro:open-internet` | Build and maintain your own private server for unrestricted access — buy it, configure it, connect, and fix it when it's blocked |
+| `/it-guy-pro:learn` | Understand what just happened, or study a whole topic — built from your machine's real numbers, not a generic tutorial |
 | `/it-guy-pro:profile` | Show or edit everything the IT guy remembers about this machine |
+
+## He explains, not just fixes
+
+Ask `/it-guy-pro:learn why` after anything and get the reasoning in a paragraph, grounded in the numbers actually measured on your Mac — not a generic article. Ask for a topic (`/it-guy-pro:learn wifi`) and get a full learning map saved to `~/ITGuy/learn/`: what it is, why it exists, when to think of it, the decisions it drives, and what you don't yet know to ask.
+
+The maps date the half that expires. Prices, standards and app recommendations carry a review-by date; principles like *find the failing layer before spending money* don't — because knowing which of your beliefs have expiry dates is most of what expertise is.
+
+## Answer me in my language
+
+At setup the IT guy asks which language to answer you in, and everything you read follows it — reports, explanations, learning maps. Everything written to disk stays English by design: file names, tool names, code, and the profile's field labels, so nothing breaks and your tools stay portable. Technical terms keep their English name alongside a short gloss in your language, so you can still search for them later.
+
+Change it anytime with `/it-guy-pro:profile update`.
 
 ## The three things that make it trustworthy
 
@@ -69,6 +82,8 @@ it-guy-pro/
 │   ├── machine-profile/ profile schema, visit log, undo manifests
 │   ├── toolbox-contract/ the micro-product contract, evolution ladder, and the
 │   │                     pattern catalogue that offers tools you didn't ask for
+│   ├── tutoring/        teaching modes, the learning-map structure, and the
+│   │                     rule that lessons are offered rather than inserted
 │   ├── macos-recipes/   exact diagnostic/action commands with their gotchas
 │   ├── home-network/    layer isolation, Wi-Fi tuning ladder, router buying,
 │                        connecting machines, security baseline
@@ -84,7 +99,7 @@ it-guy-pro/
 Two things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices:
 
 - **`scripts/guard.sh`** inspects every shell command before it runs — 52 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
-- **`scripts/lint-profile.sh`** audits the IT guy's own memory — 28 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
+- **`scripts/lint-profile.sh`** audits the IT guy's own memory — 33 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
 Run them yourself: `python3 tests/guard_test.py && python3 tests/memory_test.py`.
 

@@ -66,6 +66,7 @@ Summon: _it
 
 ## Owner
 - Call me: <name> (you told me YYYY-MM-DD)
+- Language: <the language to answer in, e.g. English, Chinese, Spanish> (you told me YYYY-MM-DD)
 - Work: <what they use it for> (you told me | observed YYYY-MM-DD)
 - Comfort level: <beginner | comfortable | technical> (observed YYYY-MM-DD)
 
@@ -118,6 +119,20 @@ When a fresh observation conflicts with a stored belief, surface it rather than 
 > "You told me in March this is mainly for writing, but most of what you've saved recently is photos. Should I update that?"
 
 Record the outcome as `corrected` (user changed it) or `confirmed` (belief stands). Never resolve a contradiction against a told-class fact on your own authority.
+
+## Field labels are English — always
+
+**Every heading and field label in this file stays in English, whatever language the user is answered in.** Values may be in their language; labels may not. This is a correctness requirement, not a style choice: the SessionStart digest greps for `^Summon: `, `^- Call me: ` and `^- Language: `, and a translated label silently disables the feature it names. The same holds for `history.md` event words and `ledger.jsonl` keys.
+
+So a `- Call me:` line whose *value* is written in the user's own script is correct. Translating the `Call me` label itself is a bug that fails quietly — the digest stops finding it, and the user simply stops being addressed by name with no error anywhere.
+
+## The `Language` line
+
+`- Language: <language>` is how the user wants to be **answered** — reports, explanations, offers, and the prose of learning maps. It is a told-class fact: set at onboarding, changed only by `/it-guy-pro:profile update`, never inferred over the top of what they chose.
+
+When the line is absent, match the language the user is writing in. When it is present, it wins even if they type in another language, because a person may write a command in English and still want the explanation in their own language.
+
+Technical terms stay in English with a short gloss in the user's language on first use, written as the translated phrase followed by the English term in parentheses. The user needs the English term to search for it later; hiding it behind a translation makes them dependent on you.
 
 ## The `Summon` and `Call me` lines
 
