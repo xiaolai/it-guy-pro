@@ -64,6 +64,20 @@ norm="$(printf '%s' "$cmd" \
 
 hitn() { printf '%s' "$norm" | grep -qE "$1"; }
 
+# A second copy with quoted spans REMOVED, used to decide whether a
+# destructive verb is really being invoked.
+#
+# `norm` deliberately strips quote characters so that `rm -f "$HOME"/Documents`
+# still matches a protected path. The side effect is that prose describing a
+# command reads exactly like the command: a commit message mentioning a
+# recursive delete alongside a home path was denied as though it were one.
+# Deleting the quoted spans instead answers the different question "is this
+# verb in a command position, or is it inside a string?" — so `git commit -m
+# "...deletes ~/Documents..."` carries no verb here, while
+# `rm -f "$HOME"/Documents/x` still does.
+unq="$(printf '%s' "$cmd" | sed -e "s/'[^']*'//g" -e 's/"[^"]*"//g')"
+hitu() { printf '%s' "$unq" | grep -qE "$1"; }
+
 # A single-line command is required for the remote-ssh exemption below:
 # grep matches per line, so any `ssh …` line anywhere would otherwise
 # excuse a `sudo` on a completely different line of the same script.
@@ -152,7 +166,7 @@ hit '\.Trash' && hit '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
 # guess what an indirect path resolves to.
 
 DESTRUCTIVE='((^|[^a-zA-Z0-9_])(rm|unlink|truncate|shred|srm)[[:space:]]|[[:space:]]-delete([[:space:]]|$)|xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)|(chmod|chown)[[:space:]]+-[a-zA-Z]*R)'
-if hit "$DESTRUCTIVE"; then
+if hitu "$DESTRUCTIVE"; then
   hitn '\.\.' && deny \
     "Paths containing .. hide their real target from safety checks. Re-run with the fully resolved absolute path — no .. segments, no brace ranges, no wildcards in the folder name."
   # Only braces that are part of a PATH. An awk or sed program body is full of
@@ -178,15 +192,15 @@ hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(~|/Users/[^/[:spa
 if hitn "$PROT"; then
   # Destruction is an outcome, not a verb. Truncation and unlink leave no
   # Trash copy at all, so they are stricter than rm, not looser.
-  hitn '(^|[^a-zA-Z0-9_])(truncate|unlink)[[:space:]]' && deny \
+  hitu '(^|[^a-zA-Z0-9_])(truncate|unlink)[[:space:]]' && hitn '(truncate|unlink)' && deny \
     "That erases user content without leaving a Trash copy. Move it to the Trash instead — see the argv-form osascript recipe in the it-guy-pro macos-recipes skill."
   hitn '(^|[^>])>[[:space:]]*(~|/Users/[^/[:space:]]+)/(Documents|Desktop|Downloads|Pictures|Movies|Music|Library|ITGuy)' && deny \
     "Redirecting over a file truncates it with no Trash copy and no undo. Write to a new name, or move the old file to the Trash first."
-  hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
+  hitu '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
     "Never rm user content. Move it to the Trash instead so the user can undo — use the argv-form osascript Trash recipe in the it-guy-pro macos-recipes skill."
-  hit '(^|[^a-zA-Z0-9_])find[[:space:]]' && hit '[[:space:]]-delete([[:space:]]|$)' && deny \
+  hitu '(^|[^a-zA-Z0-9_])find[[:space:]]' && hitu '[[:space:]]-delete([[:space:]]|$)' && deny \
     "Never mass-delete user content with find. List the candidates, show them to the user, then move approved items to the Trash."
-  hit 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && deny \
+  hitu 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && deny \
     "Never pipe user-content paths into rm. List the candidates, show them to the user, then move approved items to the Trash."
 fi
 

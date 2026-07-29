@@ -110,14 +110,14 @@ it-guy-pro/
 │                        server/client setup, troubleshooting, legal boundaries
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
 ├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh, state.sh
-└── tests/               guard (60), memory (45), state (12), recipes (8)
+└── tests/               guard (62), memory (45), state (12), recipes (8)
 ```
 
 ## Checks that actually run
 
-Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **125 assertions, run on every push:**
+Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **127 assertions, run on every push:**
 
-- **`scripts/guard.sh`** inspects every shell command before it runs — 60 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
+- **`scripts/guard.sh`** inspects every shell command before it runs — 62 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
 - **`scripts/lint-profile.sh`** audits the IT guy's own memory, with the session digest, across 45 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
 - **`scripts/state.sh`** is the only thing allowed to modify `~/ITGuy/` — 12 test cases. Several Claude sessions can run at once, so it serialises writers with a lock, writes atomically so a crash can never leave a half-written profile, retires a belief from all three files or none of them, and refuses to save a profile the linter would flag. Tested by racing six writers at the registry and asserting nothing is lost.

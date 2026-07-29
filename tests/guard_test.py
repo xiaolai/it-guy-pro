@@ -124,6 +124,36 @@ def t_program_bodies_are_not_path_braces():
         "program bodies mistaken for path brace expansion:\n  " + "\n  ".join(wrongly_denied))
 
 
+def t_prose_describing_a_delete_is_not_a_delete():
+    """A commit message or echo mentioning a delete must not be treated as one.
+
+    `norm` strips quote characters so a quoted path still matches; the side
+    effect was that text *describing* a command read exactly like the command.
+    A commit message mentioning a recursive delete beside a home path was
+    denied as though it were one — it blocked this plugin's own release.
+    """
+    allowed = [
+        'git commit -m "removed rm -rf from the docs; $HOME/ITGuy is safe"',
+        'git commit -m "guard now denies rm on ~/Documents"',
+        'echo "never run rm -rf ~/Pictures"',
+        "printf '%s' 'rm -f ~/Desktop/x.pdf is denied'",
+    ]
+    wrongly_denied = [c for c in allowed if guard(c).returncode == 2]
+    assert not wrongly_denied, (
+        "prose about deleting was treated as deleting:\n  " + "\n  ".join(wrongly_denied))
+
+
+def t_quoting_still_does_not_hide_a_real_delete():
+    """The prose carve-out must not become a bypass."""
+    for cmd in [
+        'rm -f "$HOME"/Documents/x.pdf',
+        "rm -f '/Users/joker/Pictures/x.jpg'",
+        'rm -rf "$HOME"/Desktop',
+        'rm -f ~/"Documents"/tax.pdf',
+    ]:
+        assert guard(cmd).returncode == 2, f"quoting hid a real delete: {cmd}"
+
+
 def t_unresolvable_targets():
     for cmd in ["rm -f ~/{Documents,Desktop}/x.pdf", "rm -f ~/Doc*/tax-return.pdf",
                 "rm -f ~/D?cuments/tax.pdf", "rm -f ~/Downloads/../Documents/x.pdf"]:
@@ -175,6 +205,8 @@ EXTRA = [
     ("path spelling matrix (48 combinations)", t_path_spelling_matrix),
     ("unresolvable targets denied", t_unresolvable_targets),
     ("program bodies are not path brace expansion", t_program_bodies_are_not_path_braces),
+    ("prose describing a delete is not a delete", t_prose_describing_a_delete_is_not_a_delete),
+    ("quoting still cannot hide a real delete", t_quoting_still_does_not_hide_a_real_delete),
     ("home wipe is deny, not ask", t_home_wipe_is_deny),
     ("destruction judged by outcome, not verb", t_destruction_by_outcome),
     ("ssh exemption is single-line only", t_ssh_exemption_single_line_only),
