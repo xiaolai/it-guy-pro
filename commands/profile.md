@@ -16,12 +16,22 @@ Resolve the subcommand from `$ARGUMENTS`; empty means `show`.
 Print `~/ITGuy/machine.md` verbatim, then a three-line footer:
 
 - Visits on record: count of lines in `~/ITGuy/visits.log`, with the date of the first and the latest.
-- **Memory health**: how many facts are untagged, how many conclusions are past their retest date, and the profile's line count against the 120 cap. If anything is overdue, offer `review` in the same sentence.
+- **Memory health**: run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/lint-profile.sh"` and summarise it in one line — counts by severity, nothing more. If it reports any `CRITICAL`, say so first and offer `review` immediately; a stored secret is not a footnote.
 - "This file is the IT guy's entire memory of this machine. Edit it or delete any line — whatever it says is what I'll believe next visit. What I've stopped believing is in `history.md`."
 
 ## review — the deep memory audit
 
-The full version of the checkup's automatic pass, for when the profile has drifted or the user asks what is still true. Work through `machine.md` fact by fact, using the provenance tags:
+**Run the linter first — it does the mechanical half deterministically:**
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/lint-profile.sh"
+```
+
+It emits `SEVERITY|rule|location|message` per finding (exit 0 clean, 1 findings, 2 no profile) and checks what prose cannot enforce: stored secrets, untagged facts, conclusions with no retest date or method, overdue retests, told-facts over a year old, stale measurements, an unverified or 60-day-old connection status, a summon word missing its underscore, the 120-line cap, malformed ledger lines, and demoted beliefs missing from `history.md`.
+
+**Act on `CRITICAL` findings before anything else and before showing the profile.** A stored private IP, MAC address, UUID, share link, or password is a privacy failure, not a tidiness issue: remove it from `machine.md` *and* `history.md`, write a `redacted` ledger event that records the removal without repeating the value, and tell the user plainly what was stored and that it is gone.
+
+Then work through the remaining findings and the facts the linter cannot judge:
 
 1. **Untagged facts** — anything without a provenance tag predates this discipline. Establish what you can (re-measure, re-observe, or ask) and tag it, or demote it. State how many you found; a large number is itself the finding.
 2. **Measurements** — re-read every one and write today's values. Report anything that moved materially.
