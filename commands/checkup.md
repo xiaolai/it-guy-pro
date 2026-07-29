@@ -43,6 +43,19 @@ If no pattern fires, or a 🔴 is open, say nothing here. Silence is the correct
 
 Save a self-contained HTML version to `~/ITGuy/reports/YYYY-MM-DD-checkup.html`: inline CSS only, no external requests, readable on a phone, same content as the chat report. Then `open` it and tell the user where it lives.
 
+## Step 3b: The memory pass — retire what is no longer true
+
+Every checkup maintains the memory as well as the machine. Read the provenance and expiry rules in `${CLAUDE_PLUGIN_ROOT}/skills/machine-profile/SKILL.md` and do four things, cheaply:
+
+1. **Re-date measurements.** Disk, memory, macOS version, battery are re-read by this checkup anyway — write the new values with today's date. A stored measurement is a baseline for comparison, never a fact to trust.
+2. **Retest due conclusions.** For each Live Conclusion whose `retest by` date has passed, run its recorded retest. Reproduced → re-date and push the retest date out. Not reproduced → demote to `history.md` as "no longer observed" **and tell the user in one line**: "That fan noise you had in July — I couldn't reproduce it today, so I've stopped assuming it." Unverifiable twice → demote.
+3. **Close resolved Watch List items.** Anything this checkup shows is fixed moves to `history.md` with what closed it.
+4. **Surface contradictions.** If a finding conflicts with a stored belief, raise it as a question rather than overwriting — never resolve against a told-class fact on your own authority.
+
+Append one `ledger.jsonl` event per change (`retested`, `demoted`, `changed`, `confirmed`). If nothing was due and nothing changed, write nothing and say nothing — a quiet memory pass is the normal case.
+
+Keep this to a few lines of output at most. The health report is the deliverable; memory maintenance is housekeeping the user should see evidence of, not a second report.
+
 ## Step 4: Update memory
 
 - `~/ITGuy/machine.md` exists → refresh Hardware/System facts in place (new `Updated:` date), resolve or extend Watch List entries this checkup confirms or clears.

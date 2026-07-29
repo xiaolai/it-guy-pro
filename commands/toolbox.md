@@ -22,6 +22,12 @@ Read `~/ITGuy/toolbox.json` and render:
 
 Then check the evolution ladder's triggers: any tool with 5+ runs still at `script` stage gets one line offering the upgrade. If the registry references a folder that no longer exists, flag it as broken and offer `remove`.
 
+**Staleness check** — a toolbox rots as quietly as a profile does:
+
+- **Unused for 180+ days** → offer removal once. If declined, do not raise it again for another 180 days.
+- **Broken by a system update** → run each tool's dry-run and report any that now error. A tool the user believes works but doesn't is worse than no tool: offer repair via `evolve`, and mark it in the registry so it is not silently recommended meanwhile.
+- **A tool whose pattern no longer fires** (its chore stopped happening) is *not* stale — it is probably working. Say so rather than offering removal.
+
 **Suggestion pass.** Read `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/references/pattern-catalogue.md` and run its signals, including the 30-day recency companions. Skip any pattern whose id appears in `declined`, and any whose id already appears as a `pattern` field on a built tool. Per the catalogue's per-command table this context allows **up to three** offers — the user came here to look at tools — highest count first, each a one-line offer containing the observed number, chosen via AskUserQuestion with a "none of these" option.
 
 Recording declines follows catalogue rule 4: **"none of these" declines all three; picking one records nothing about the other two**, which stay eligible next time. Say nothing about a pattern below its threshold or with a zero 30-day count. If nothing fires, say the machine looks tidy and that `/it-guy-pro:automate` is there whenever a chore starts to annoy them — an honest empty result, not a failure.

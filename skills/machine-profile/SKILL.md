@@ -1,13 +1,52 @@
 ---
 name: machine-profile
-description: Schema and update rules for the machine profile (~/ITGuy/machine.md), the visit log (~/ITGuy/visits.log), and undo manifests (~/ITGuy/undo/). Load when creating, reading, or updating what the IT guy remembers about this machine.
+description: How the IT guy remembers, refreshes, and retires what it knows about this machine — the profile schema, provenance classes, expiry by evidence, the belief ledger, demotion to history, the visit log, and undo manifests. Load when reading, writing, reviewing, or pruning anything in ~/ITGuy/.
 ---
 
-# Machine Profile
+# Machine Profile — memory that expires honestly
 
-The profile is the IT guy's memory. It is a plain Markdown file the user can open and read — never a hidden database. Everything in it must be something the user could verify themselves.
+The profile is the IT guy's memory. It is plain Markdown the user can open, read, and edit — never a hidden database. Everything in it must be something they could verify themselves.
 
-## `~/ITGuy/machine.md` template
+**The failure mode this schema exists to prevent:** ten commands write here and, without discipline, none retire anything. A profile that only grows becomes a landfill of half-true statements, and stale beliefs are worse than no beliefs — a conclusion drawn a year ago and never retested silently biases every future diagnosis toward a cause that may no longer exist.
+
+## Provenance decides expiry — tag every fact
+
+How a fact was learned determines how it dies. Tag each one inline; the tag is part of the line, not metadata elsewhere.
+
+| Class | Written as | Lifecycle |
+|---|---|---|
+| **Measured** | `(measured 2026-07-29)` | **Never trusted as current.** Disk space, memory, macOS version, battery. The stored number is a *baseline to compare against*, not a fact — any command needing the value re-reads it. Refresh the date whenever re-read |
+| **Observed** | `(observed 2026-07-29)` | Cheap to re-observe: file counts, folder habits, dominant file types. Refresh on the next command that looks |
+| **Told** | `(you told me 2026-07-29)` | The user's own words: name, work, goals, preferences. **Only the user may invalidate these.** Never auto-expire, never quietly rewrite |
+| **Concluded** | `(concluded 2026-07-29, retest by 2026-10-29)` | **The dangerous class.** A diagnosis, a quirk, a cause-and-effect the IT guy inferred. Every one carries a retest date and a way to retest — see below |
+| **Resolved** | moves to `history.md` | No longer live. Demoted with the date and what closed it |
+
+A fact with no tag is a bug. When you find one, tag it with what you can establish and today's date, or demote it.
+
+## Conclusions must carry their own retest
+
+This is the rule that keeps the profile honest. A conclusion without a retest is a rumour with a date on it.
+
+```markdown
+- 2026-07-29 · fan runs loud when Chrome has many tabs (concluded 2026-07-29, retest by 2026-10-29)
+  retest: ps -Ao pcpu,comm -r | head -5 while the user reports the noise
+```
+
+When the retest date passes, the next checkup re-runs it and takes one of three actions, always recording the outcome in the ledger:
+
+- **Reproduced** → re-date it, push the retest date out, keep it live.
+- **Not reproduced** → demote to `history.md` as "no longer observed", and say so to the user. This is how stale information actually gets ripped out: by evidence, not by age.
+- **Cannot retest** (hardware gone, user unavailable) → mark `unverifiable` and demote after a second attempt. Do not keep a belief alive that nothing can ever check.
+
+## Demote, never delete
+
+Pruning exists to control **context cost**, not to save disk. So stale facts move out of the live profile into `~/ITGuy/history.md`, which is never loaded into context by default and grows without limit.
+
+Deleting is forbidden because it destroys the ability to explain a past decision — "why did the IT guy replace that router?" must remain answerable. The one exception is data that should never have been stored (a password, an address, a serial number): that is deleted outright, from history too, and the ledger records that a redaction happened without repeating the value.
+
+**Cap: 120 lines for `machine.md` only.** When over, demote in this order: resolved items, then conclusions past retest, then observations older than 180 days, then the oldest measurements. **Never demote told-class facts to make room** — ask the user instead.
+
+## `~/ITGuy/machine.md`
 
 ```markdown
 # This Machine
@@ -16,78 +55,86 @@ Updated: YYYY-MM-DD by /it-guy-pro:<command>
 Summon: _it
 
 ## Hardware
-- Model: <e.g. MacBook Air M2, 2022>
-- Memory: <e.g. 16 GB>
-- Disk: <e.g. 500 GB, 41 GB free as of YYYY-MM-DD>
-- Battery: <cycle count + condition, or "desktop — no battery">
+- Model: <e.g. MacBook Air M2, 2022> (measured YYYY-MM-DD)
+- Memory: <e.g. 16 GB> (measured YYYY-MM-DD)
+- Disk: <total, free> (measured YYYY-MM-DD)
+- Battery: <cycles + condition, or "desktop"> (measured YYYY-MM-DD)
 
 ## System
-- macOS: <version name + number>
-- Backups: <e.g. "Time Machine to 'Backup2TB', last ran YYYY-MM-DD" or "NONE — flagged">
+- macOS: <version> (measured YYYY-MM-DD)
+- Backups: <destination + last run, or "NONE — flagged"> (measured YYYY-MM-DD)
 
 ## Owner
-- Call me: <how the user wants to be addressed — omit the bullet if they skipped the question>
-- Work: <profession / what they use the computer for, in their own words>
-- Comfort level: <beginner | comfortable | technical>
-- Goals: <what "production tool" means to them, 1–3 bullets>
+- Call me: <name> (you told me YYYY-MM-DD)
+- Work: <what they use it for> (you told me | observed YYYY-MM-DD)
+- Comfort level: <beginner | comfortable | technical> (observed YYYY-MM-DD)
 
 ## Conventions
-- <folder habits, e.g. "Screenshots pile up on Desktop; wants them auto-filed">
-- <naming habits, e.g. "Prefers YYYY-MM-DD prefixes on documents">
+- <filing/naming habit> (observed YYYY-MM-DD)
 
 ## Private Connection
-- Status: <working | blocked | needs setup>
-- Provider / region: <e.g. Vultr, Osaka>
-- Architecture: <direct-reality | cdn-fronted | both>
-- Client app: <e.g. Clash Verge Rev>
-- Renews: YYYY-MM-DD
-- Last verified: YYYY-MM-DD
+- Status / provider / architecture / client / renews / last verified   (see below)
 
-## Known Quirks
-- YYYY-MM-DD: <recurring issue or hardware oddity, newest first>
+## Live Conclusions
+- YYYY-MM-DD · <quirk or diagnosis> (concluded YYYY-MM-DD, retest by YYYY-MM-DD)
+  retest: <the command or observation that would confirm it>
 
 ## Watch List
-- <things to re-check on next visit, e.g. "disk was 92% full on 2026-07-29">
+- <thing to re-check next visit> (measured|observed YYYY-MM-DD, due YYYY-MM-DD)
 ```
 
-## Field sources
+Fill hardware and system fields from real commands, never guesses. Fill Owner and Conventions from what the user actually said or what was observed — and label which.
 
-Fill hardware/system fields from real commands (exact recipes in the `macos-recipes` skill), never from guesses. Fill Owner and Conventions only from what the user actually said.
+**Never store:** passwords, serial numbers, IP addresses, MAC addresses, Wi-Fi names, network topology, account emails, or any toolbox credential. If the user volunteers one, leave it out and say why in one sentence.
 
-## The `Summon:` and `Call me:` lines
+## `~/ITGuy/history.md`
 
-- `Summon: _it` — the word that calls the IT guy out from any conversation. `_it` is the default; a different word must keep the leading underscore (that's the collision guard). The exact `Summon: ` line prefix matters — the SessionStart digest greps for it to inject the convention into every session.
-- `- Call me: <name>` (in Owner) — how the IT guy addresses the user. Set from the one onboarding question; a preferred form of address, never an identity.
-- Both change only via `/it-guy-pro:profile update`, never spontaneously.
-- Neither changes authority — see the summon rule in the `it-core` skill.
+Append-only, newest first, never loaded into context unless the user asks a "what did you used to think" question.
+
+```markdown
+- 2026-10-29 · demoted · fan loud with many Chrome tabs · not reproduced on retest
+- 2026-09-02 · resolved · disk 92% full · cleanup freed 68 GB
+```
+
+## `~/ITGuy/ledger.jsonl` — tracing what changed and why
+
+Append-only, one JSON object per belief event. This is distinct from `visits.log`, and the distinction matters: **the visit log records what was _done_; the ledger records what was _believed_.** Together they answer "why does the IT guy think this, and when did that change?"
+
+```jsonl
+{"ts":"2026-07-29","event":"learned","subject":"fan-loud-chrome","class":"concluded","by":"fix","note":"CPU 180% on Chrome during report"}
+{"ts":"2026-10-29","event":"retested","subject":"fan-loud-chrome","result":"not reproduced","by":"checkup"}
+{"ts":"2026-10-29","event":"demoted","subject":"fan-loud-chrome","to":"history.md"}
+{"ts":"2026-11-02","event":"changed","subject":"disk-free","from":"41 GB","to":"180 GB","by":"cleanup"}
+```
+
+Events: `learned` · `confirmed` · `changed` · `retested` · `demoted` · `corrected` (the user fixed something) · `redacted`. Keep notes short and never put a secret in one.
+
+**What this buys that the profile alone cannot:** the profile shows what is believed *now*; the ledger shows what was checked and found unchanged — most of the work, and otherwise invisible. It also exposes flip-flops: a belief that oscillates means the observation is unreliable, not that the machine keeps changing.
+
+## Contradiction is the highest-value event
+
+When a fresh observation conflicts with a stored belief, surface it rather than silently overwriting — that is the moment the memory earns its keep:
+
+> "You told me in March this is mainly for writing, but most of what you've saved recently is photos. Should I update that?"
+
+Record the outcome as `corrected` (user changed it) or `confirmed` (belief stands). Never resolve a contradiction against a told-class fact on your own authority.
+
+## The `Summon` and `Call me` lines
+
+`Summon: _it` is the word that calls the IT guy from any session; a different word must keep the leading underscore. The `Summon: ` prefix matters — the SessionStart digest greps for it. `- Call me:` in Owner is how the user is addressed. Both change only via `/it-guy-pro:profile update`.
 
 ## The `Private Connection` section
 
-Written only by `/it-guy-pro:open-internet`; omit the whole section when no server exists. `Status` is the field other commands branch on, so keep it accurate: `working` means verified on the date in `Last verified`, `blocked` means diagnosed as blocked and not yet fixed, `needs setup` means started but not finished.
+Written only by `/it-guy-pro:open-internet`; omit entirely when no server exists. `Status` is what other commands branch on: `working` means verified on the date in `Last verified`, `blocked` means diagnosed and unfixed, `needs setup` means started but unfinished. **A `working` status older than 60 days is stale, not evidence** — re-verify before relying on it.
 
-**Never record here (or anywhere in `~/ITGuy/`): the share link, UUID, private or public keys, shortId, server password, or SSH key.** Those are credentials; the profile is a memo. The provider, region, and renewal date are enough for the IT guy to be useful next visit.
-
-## Update rules
-
-1. **Cap: 120 lines.** When over, delete the oldest Known Quirks entries first, then compress Conventions.
-2. **Newest first** in Known Quirks and Watch List.
-3. **Update, don't append**: hardware/system facts are replaced in place with a fresh `Updated:` date.
-4. **Never store**: passwords, serial numbers, IP addresses, Wi-Fi names, account emails. If the user volunteers one, leave it out and say why.
-5. Every command that learns something durable (a quirk, a convention, a fixed problem) writes it here in the same run — memory that only lives in the conversation is lost.
+**Never record here or anywhere in `~/ITGuy/`:** the share link, UUID, keys, shortId, server password, or SSH key.
 
 ## `~/ITGuy/visits.log`
 
-Append-only, one line per command run, format defined in the `it-core` skill. Never edit or delete existing lines.
+Append-only, one line per command run, format in the `it-core` skill. Never edit or delete existing lines.
 
 ## Undo manifests — `~/ITGuy/undo/`
 
-Before any batch move/rename, write `<YYYY-MM-DD-HHMM>-<command>-<mode>.csv`:
+Before any batch move or rename, write `<YYYY-MM-DD-HHMM>-<command>-<mode>.csv` with header `moved_from,moved_to`, one row per file, absolute paths, **written before the first move executes**.
 
-```csv
-moved_from,moved_to
-/Users/name/Downloads/report.pdf,/Users/name/Documents/Invoices/2026/report.pdf
-```
-
-- One row per file, full absolute paths, written **before** the first move executes.
-- To undo: process rows in reverse order, move `moved_to` back to `moved_from`, skipping rows where the destination no longer exists (report skipped rows to the user).
-- Keep the 20 most recent manifests; move older ones to the Trash during cleanup runs.
+To undo: process rows in reverse, move `moved_to` back to `moved_from`, skip rows whose destination is gone, and report every skip. Keep the 20 most recent manifests; move older ones to the Trash during cleanup.

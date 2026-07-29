@@ -48,7 +48,9 @@ The leading underscore is the trigger; the everyday word "it" never summons him,
 
 ## The three things that make it trustworthy
 
-**1. Memory you can read.** Everything the IT guy knows lives in one visible folder, `~/ITGuy/` — the machine profile, the visit log, the undo manifests, your toolbox. Plain text. Edit any of it; whatever it says is what he believes. No hidden state, ever.
+**1. Memory you can read — that retires itself.** Everything the IT guy knows lives in one visible folder, `~/ITGuy/` — the machine profile, the visit log, the undo manifests, your toolbox. Plain text. Edit any of it; whatever it says is what he believes.
+
+More importantly, **it forgets on purpose.** Every remembered fact is tagged with how it was learned — measured, observed, you told me, or concluded — and every conclusion carries a date by which it must be retested. When a checkup comes around, overdue conclusions get re-tested against the machine: reproduce and they stay, fail to reproduce and they're retired with a note. Stale beliefs are worse than none, because a diagnosis from a year ago quietly biases every diagnosis after it. Nothing is deleted, though — retired beliefs move to `history.md`, and `ledger.jsonl` records every change, so "why do you think that?" and "did you ever fix that?" both have real answers.
 
 **2. Rails, not promises.** A hook inspects every shell command before it runs and blocks the catastrophic ones outright — `rm` on your Documents or Photos, `sudo`, disk erasing, deleting backups, emptying your Trash — regardless of session permission settings. Deletions only ever go to the Trash (you can always undo), batch moves write an undo manifest first, admin commands are handed to *you* to run, and nothing gets fixed before you've seen the diagnosis.
 
