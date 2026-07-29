@@ -61,3 +61,15 @@ python3 tests/guard_test.py && python3 tests/memory_test.py \
 ```
 
 CI runs these on `macos-latest` on every push. It must be macOS: `guard.sh` parses its payload with JXA, and without it 32 of 59 guard cases change verdict, so a Linux runner would report green for a guard that never ran as shipped.
+
+## Releasing
+
+Bump the version as its OWN command, never chained to other work with `&&`.
+A guard block or any earlier failure skips everything downstream silently —
+that is how a tag once shipped pointing at an unbumped manifest, with both
+manifests agreeing with each other and disagreeing with the tag. `recipes_test`
+now asserts plugin.json, the bundled marketplace entry, and the newest tag all
+agree, but the habit is the real fix.
+
+Order: bump both manifests, run all four suites, commit, tag, push, then update
+the central marketplace and its README table.

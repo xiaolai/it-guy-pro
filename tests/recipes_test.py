@@ -158,6 +158,29 @@ def t_readme_test_counts_match_reality():
 
 
 @case
+def t_version_is_consistent_everywhere():
+    """plugin.json, the bundled marketplace entry, and the newest tag must agree.
+
+    A version bump chained onto other work with `&&` is skipped entirely when
+    anything earlier in the command fails — which is how a tag was once
+    published pointing at an unbumped manifest. Nothing noticed, because both
+    manifests agreed with each other while disagreeing with the tag.
+    """
+    plugin = json.loads((ROOT / ".claude-plugin/plugin.json").read_text())["version"]
+    bundled = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text())["plugins"][0]["version"]
+    assert plugin == bundled, f"manifest drift: plugin.json {plugin} vs bundled marketplace {bundled}"
+
+    tags = subprocess.run(["git", "tag", "--sort=-v:refname"], cwd=ROOT,
+                          capture_output=True, text=True).stdout.split()
+    tags = [t for t in tags if t.startswith("v")]
+    if tags:
+        newest = tags[0].lstrip("v")
+        assert newest <= plugin, (
+            f"tag {tags[0]} is newer than plugin.json {plugin} — a release was tagged "
+            "without bumping the manifest")
+
+
+@case
 def t_documented_gotchas_are_still_true():
     """recipes claim specific failure behaviour; verify the checkable ones"""
     problems = []
