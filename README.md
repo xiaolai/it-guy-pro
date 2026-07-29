@@ -22,12 +22,18 @@ The IT guy looks over your machine — he doesn't quiz you, since the Desktop an
 
 ## Name him, and summon him with `_it`
 
-At setup he asks what you'd like to call him. **Two ways to reach him, and both matter:**
+At setup he asks what you'd like to call him. Name him Alan and you get **two triggers, either of which reaches him from any conversation on any topic**:
 
-- **`_it`** is mechanical. An underscore-led word can't occur by accident, so it works in any conversation on any topic, with no interpretation involved.
-- **His name** is natural. "Alan, check my backup" reaches him too, and capitalisation never matters — `Alan`, `alan` and `ALAN` are one name. Only direct address counts; "Alan Turing" in a sentence is a mention, not a summons.
+```
+_it  my mac feels slow
+_alan  my mac feels slow
+```
 
-Naming him after someone real is safe precisely because `_it` never depends on that judgement. Prefer him nameless? Say so; he works identically.
+**Capitalisation never matters** — `_alan`, `_Alan` and `_ALAN` are one trigger, as are `_it` and `_IT`.
+
+The leading underscore is what makes both reliable. It keeps the trigger mechanical, so there is nothing to interpret: `_alan` cannot appear by accident, which means "Alan Turing" or "I asked Alan yesterday" summons nothing at all. That is exactly why naming him after a real person is safe.
+
+`_it` always works too, whatever you named him — so the convention is one sentence to teach, and the same for everybody. Prefer him nameless? Say so; only `_it` applies and he works identically.
 
 From any Claude session — any project, any topic — typing `_it` as a standalone word summons the IT guy:
 
@@ -98,15 +104,15 @@ it-guy-pro/
 │                        server/client setup, troubleshooting, legal boundaries
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
 ├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh, state.sh
-└── tests/               guard (60), memory (40), state (12), recipes (8)
+└── tests/               guard (60), memory (45), state (12), recipes (8)
 ```
 
 ## Checks that actually run
 
-Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **120 assertions, run on every push:**
+Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **125 assertions, run on every push:**
 
 - **`scripts/guard.sh`** inspects every shell command before it runs — 60 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
-- **`scripts/lint-profile.sh`** audits the IT guy's own memory, with the session digest, across 40 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
+- **`scripts/lint-profile.sh`** audits the IT guy's own memory, with the session digest, across 45 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
 - **`scripts/state.sh`** is the only thing allowed to modify `~/ITGuy/` — 12 test cases. Several Claude sessions can run at once, so it serialises writers with a lock, writes atomically so a crash can never leave a half-written profile, retires a belief from all three files or none of them, and refuses to save a profile the linter would flag. Tested by racing six writers at the registry and asserting nothing is lost.
 - **`tests/recipes_test.py`** binds the prose to the code — 8 test cases. It asserts every documented shell recipe parses, that the guard never blocks a command the plugin tells itself to run, that the published profile schema passes the linter shipped beside it, and that the fields the schema publishes are the fields the session hook actually reads. It also re-checks documented gotchas against the live system, which is how the "Time Machine reports failure by exit code" error was found — it does not; it exits 0 and an agent trusting `$?` would have told you a missing backup was fine.

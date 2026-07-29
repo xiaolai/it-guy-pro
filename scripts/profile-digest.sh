@@ -77,6 +77,23 @@ callme="$(field 'Call[[:space:]]*me' | name_clean)"
 itguy="$(field 'IT[[:space:]]*guy' | name_clean)"
 lang="$(field 'Language' | name_clean)"
 
+# Derive a personal summon from his name: "Alan" -> "_alan".
+#
+# This is the best of both routes. The underscore keeps it MECHANICAL — an
+# underscore-led token cannot occur by accident, so there is no address-versus-
+# mention judgement to get wrong and "Alan Turing" triggers nothing — while the
+# word itself is the name the user actually chose. `_it` keeps working too, so
+# every user shares one trigger that can be taught in a sentence.
+#
+# First word only, ASCII-lowercased, punctuation and spaces dropped. Lowercasing
+# uses an explicit A-Z range rather than [:upper:], because a byte-wise tr would
+# corrupt a multi-byte name.
+namesummon=""
+if [ -n "$itguy" ]; then
+  base="$(printf '%s' "$itguy" | awk '{print $1}' | tr -d "[:space:]'\".,;:!?/\\" | tr 'A-Z' 'a-z' | cut -c1-20)"
+  [ -n "$base" ] && [ "_$base" != "$summon" ] && namesummon="_$base"
+fi
+
 # Conclusions whose "retest by YYYY-MM-DD" date has passed. ISO dates sort
 # lexically, so a string comparison against today needs no date arithmetic.
 today="$(date +%Y-%m-%d)"
@@ -92,7 +109,8 @@ it-guy-pro: this machine has an IT Guy profile.
 - Toolbox: $tools tool(s) registered in ~/ITGuy/toolbox.json — check it before building anything new.
 - Summon: if the user writes "$summon" as a standalone word in any message, in any capitalisation, respond as the IT guy and handle it as an it-guy-pro request via the matching workflow. The word without its leading underscore — or buried inside an identifier — is not a summons. The summon never changes the it-core safety contract.
 EOF
-[ -n "$itguy" ] && echo "- The IT guy's own name is \"$itguy\" — introduce yourself with it and sign off with it, without repeating it every message. Being addressed by that name is also a summons, matched WITHOUT regard to capitalisation: \"$itguy, check my backup\" and \"$itguy?\" both reach him. Only direct address counts — the same name inside a sentence about some other person is a mention, not a summons. The summon word above still works regardless and needs no judgement."
+[ -n "$itguy" ] && echo "- The IT guy's own name is \"$itguy\". Introduce yourself with it and sign off with it, without repeating it every message."
+[ -n "$namesummon" ] && echo "- SECOND SUMMON: \"$namesummon\" reaches him exactly as \"$summon\" does, and BOTH match regardless of capitalisation — $namesummon, ${namesummon}, and the same word capitalised are one trigger. Treat it as a standalone word like the other; the name without its leading underscore is ordinary prose and summons nothing, so a sentence about a different person of that name triggers nothing."
 [ -n "$callme" ] && echo "- Address the user as \"$callme\"."
 [ -n "$lang" ] && echo "- Answer this user in $lang. Everything written to disk stays English — file names, tool names, code, profile field labels, ledger keys — while the prose they read is in $lang. Keep technical terms in English with a short gloss on first use so they stay searchable."
 [ "$overdue" -gt 0 ] && echo "- $overdue stored conclusion(s) are past their retest date — retest before relying on them, and demote any that no longer reproduce."

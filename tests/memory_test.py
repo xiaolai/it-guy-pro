@@ -412,18 +412,58 @@ def _():
     assert "IT guy's own name" not in r2.stdout, "emitted a name line with no name set"
 
 
-@case("the name is announced as a case-insensitive form of address")
-def _():
-    d = make(CLEAN.replace("Summon: _it", "Summon: _it\nIT guy: Alan"))
+def digest_for(name=None, summon="_it"):
+    prof = CLEAN.replace("Summon: _it", f"Summon: {summon}" + (f"\nIT guy: {name}" if name else ""))
+    d = make(prof)
     (d / "visits.log").write_text("2026-07-30 10:00 | checkup | fine | -\n")
-    out = run(DIGEST, d, use_home=True).stdout
+    return run(DIGEST, d, use_home=True).stdout
+
+
+@case("naming him creates a second underscore summon, derived from the name")
+def _():
+    out = digest_for("Alan")
+    assert '"_alan"' in out, f"no _alan trigger derived from the name Alan:\n{out}"
+    assert '"_it"' in out, "the universal trigger must survive alongside the personal one"
     low = out.lower()
-    assert "without regard to capitalisation" in low or "case" in low, (
-        f"the digest never tells the model that the name matches case-insensitively:\n{out}")
-    assert "mention" in low, (
-        "the digest must distinguish addressing him from mentioning someone with "
-        f"the same name, or every 'Alan Turing' becomes a summons:\n{out}")
-    assert '"_it"' in out, "the mechanical summon must survive alongside the name"
+    assert "capitalisation" in low or "capitalization" in low, (
+        f"the digest never states that the triggers are case-insensitive:\n{out}")
+
+
+@case("the derived summon is stable across how the name is capitalised")
+def _():
+    for written in ("Alan", "alan", "ALAN", "aLaN"):
+        out = digest_for(written)
+        assert '"_alan"' in out, f"{written!r} did not derive _alan:\n{out}"
+
+
+@case("multi-word and punctuated names still derive one clean token")
+def _():
+    assert '"_mary"' in digest_for("Mary Jane"), "multi-word name did not reduce to its first word"
+    assert '"_ed"' in digest_for("Ed."), "trailing punctuation leaked into the trigger"
+    out = digest_for("Mary-Jane O'Brien")
+    assert '"_mary-jane"' in out, f"hyphenated name mishandled:\n{out}"
+    assert "'" not in out.split("SECOND SUMMON: ")[1][:20], "apostrophe leaked into the trigger"
+
+
+@case("no name means no second summon and no dangling underscore")
+def _():
+    out = digest_for(None)
+    assert "SECOND SUMMON" not in out, f"announced a personal trigger with no name set:\n{out}"
+    assert '"_it"' in out, "the universal trigger disappeared when unnamed"
+
+
+@case("a name identical to the summon word does not announce a duplicate")
+def _():
+    out = digest_for("it")
+    assert "SECOND SUMMON" not in out, (
+        f"announced _it twice as though it were two different triggers:\n{out}")
+
+
+@case("a custom summon word still gets a distinct personal trigger")
+def _():
+    out = digest_for("Alan", summon="_mac")
+    assert '"_mac"' in out and '"_alan"' in out, (
+        f"a non-default summon must coexist with the derived one:\n{out}")
 
 
 @case("an injected IT guy name cannot carry instructions")

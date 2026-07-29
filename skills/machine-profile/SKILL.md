@@ -139,7 +139,9 @@ Technical terms stay in English with a short gloss in the user's language on fir
 
 What the user calls him. Set at onboarding, changed only by `/it-guy-pro:profile update`, and the line is omitted entirely when the user declines a name — an unnamed IT guy works identically.
 
-**The name reaches him too, case-insensitively, but only as direct address.** `_it` stays the mechanical trigger that works anywhere without judgement; the name is the natural one, and applies when someone is speaking *to* him rather than *about* a person who shares the name. Capitalisation never matters — `Alan`, `alan` and `ALAN` are one name.
+**A name creates a second summon.** `IT guy: Alan` means `_alan` reaches him just as `_it` does, and both ignore capitalisation. The digest derives it from the first word of the name, ASCII-lowercased with spaces and punctuation dropped, so `Mary-Jane O'Brien` yields `_mary-jane`.
+
+Both stay underscore-led on purpose: the trigger remains mechanical, so a sentence *about* someone of that name summons nothing and no judgement is involved. `_it` always works too, which is what lets the convention be taught in one sentence to every user regardless of the name they chose.
 
 The summon word is always `_it` (or the profile's `Summon:` value) regardless of his name. That separation is deliberate: in an earlier design the name *was* the trigger, which meant a common name caused false summons and every user had a different one to remember. Decoupling them means he can be called anything, including a name shared with a real person, with no mechanical consequence.
 

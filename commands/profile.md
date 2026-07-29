@@ -15,6 +15,7 @@ Resolve the subcommand from `$ARGUMENTS`; empty means `show`.
 
 Print `~/ITGuy/machine.md` verbatim, then a three-line footer:
 
+- How to reach him: list both triggers — the `Summon:` value and, when an `IT guy:` name is set, the derived `_<name>` — noting that capitalisation is irrelevant to either.
 - Visits on record: count of lines in `~/ITGuy/visits.log`, with the date of the first and the latest.
 - **Memory health**: run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/lint-profile.sh"` and summarise it in one line — counts by severity, nothing more. If it reports any `CRITICAL`, say so first and offer `review` immediately; a stored secret is not a footnote.
 - "This file is the IT guy's entire memory of this machine. Edit it or delete any line — whatever it says is what I'll believe next visit. What I've stopped believing is in `history.md`."
