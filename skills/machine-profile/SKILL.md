@@ -13,7 +13,7 @@ The profile is the IT guy's memory. It is a plain Markdown file the user can ope
 # This Machine
 
 Updated: YYYY-MM-DD by /it-guy-pro:<command>
-IT guy: <name>
+Summon: _it
 
 ## Hardware
 - Model: <e.g. MacBook Air M2, 2022>
@@ -26,6 +26,7 @@ IT guy: <name>
 - Backups: <e.g. "Time Machine to 'Backup2TB', last ran YYYY-MM-DD" or "NONE — flagged">
 
 ## Owner
+- Call me: <how the user wants to be addressed — omit the bullet if they skipped the question>
 - Work: <profession / what they use the computer for, in their own words>
 - Comfort level: <beginner | comfortable | technical>
 - Goals: <what "production tool" means to them, 1–3 bullets>
@@ -45,12 +46,12 @@ IT guy: <name>
 
 Fill hardware/system fields from real commands (exact recipes in the `macos-recipes` skill), never from guesses. Fill Owner and Conventions only from what the user actually said.
 
-## The `IT guy:` line
+## The `Summon:` and `Call me:` lines
 
-- Set once at onboarding from the user's answer; omit the line entirely if they chose no name.
-- The exact format `IT guy: <name>` on its own line matters — the SessionStart digest greps for this prefix to inject the calling convention (`<name>_`, name + underscore) into every session.
-- Renamed only via `/it-guy-pro:profile update`, never spontaneously.
-- The name changes voice, nothing else — see the persona rule in the `it-core` skill.
+- `Summon: _it` — the word that calls the IT guy out from any conversation. `_it` is the default; a different word must keep the leading underscore (that's the collision guard). The exact `Summon: ` line prefix matters — the SessionStart digest greps for it to inject the convention into every session.
+- `- Call me: <name>` (in Owner) — how the IT guy addresses the user. Set from the one onboarding question; a preferred form of address, never an identity.
+- Both change only via `/it-guy-pro:profile update`, never spontaneously.
+- Neither changes authority — see the summon rule in the `it-core` skill.
 
 ## Update rules
 

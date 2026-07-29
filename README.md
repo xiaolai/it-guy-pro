@@ -18,17 +18,23 @@ Then start with:
 /it-guy-pro:onboard
 ```
 
-The IT guy looks over your machine (he doesn't quiz you — the Desktop and Downloads folder tell him more than a questionnaire would), asks you exactly one question — **what to call him** — and writes down what he observed in a file you can read: `~/ITGuy/machine.md`.
+The IT guy looks over your machine (he doesn't quiz you — the Desktop and Downloads folder tell him more than a questionnaire would), asks you exactly one question — **your name**, so he knows how to address you — and writes down what he observed in a file you can read: `~/ITGuy/machine.md`.
 
-## Call him by name
+## Summon him with `_it`
 
-Name him "warren" at onboarding, and from then on typing `warren_` — the name plus an underscore — in **any** Claude session summons him: `warren_ my mac feels slow`. The underscore keeps ordinary mentions of the name from triggering him by accident. No name feels right? Skip it; the slash commands always work.
+From any Claude session — any project, any topic — typing `_it` as a standalone word summons the IT guy:
+
+```
+_it my mac feels slow
+```
+
+The leading underscore is the trigger; the everyday word "it" never summons him, and neither does `_it` buried inside code like `_item`. Prefer a different word? Edit the `Summon:` line in `~/ITGuy/machine.md` (keep the underscore) or ask via `/it-guy-pro:profile update`. The slash commands always work regardless.
 
 ## Commands
 
 | Command | What it does |
 |---------|--------------|
-| `/it-guy-pro:onboard` | First visit — observes the machine, asks one question (his name), proposes 3 next steps from evidence |
+| `/it-guy-pro:onboard` | First visit — observes the machine, asks one question (your name), proposes 3 next steps from evidence |
 | `/it-guy-pro:checkup` | Full health report: disk, memory, startup items, updates, backups, battery. Read-only. Add `--html` for a keepable report |
 | `/it-guy-pro:cleanup` | Reclaim disk space — scan first, you approve categories, everything goes to the Trash (never deleted outright) |
 | `/it-guy-pro:organize` | Sort Downloads, Desktop, photos (by date), or PDFs (by content). Every run writes an undo manifest — `organize undo` reverses it |
