@@ -65,6 +65,7 @@ it-guy-pro/
 
 - The guard hook applies to every Bash call in sessions where the plugin is enabled. If you're a developer, `rm -rf` of build artifacts will trigger a confirm prompt (recursive deletes outside user-content folders are "ask", not "deny") — install at project scope if that bothers you.
 - The hook parses the tool payload with JXA (`osascript -l JavaScript`), which ships on every Mac — no jq/python dependency. On parse failure it falls back to matching the raw payload, which over-blocks rather than under-blocks.
+- Threat model: the guard is text matching, not shell simulation. It reliably stops *accidental* destruction and coarse injection outcomes (plus "ask" tiers for indirection: `..` paths, command substitution, pipe-to-shell, eval, interpreters shelling out). A deliberately obfuscated command can evade it — the layered defenses there are the untrusted-data rules in the it-core skill and Claude Code's own permission system.
 
 ## License
 

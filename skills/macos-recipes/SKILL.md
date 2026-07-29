@@ -48,8 +48,10 @@ Exact commands, expected output shape, and gotchas. Use these verbatim rather th
 
 ### Delete = move to Trash (the only allowed deletion)
 ```bash
-osascript -e 'tell application "Finder" to delete POSIX file "/full/absolute/path"'
+osascript -e 'on run argv' -e 'set p to POSIX file (item 1 of argv)' \
+  -e 'tell application "Finder" to delete p' -e 'end run' "/full/absolute/path"
 ```
+- The path is passed as an argument, never interpolated into the AppleScript source — filenames containing quotes or apostrophes cannot break out of the script.
 - One file/folder per call; for batches, loop and count.
 - Preserves "Put Back" in Finder — this is why rm is banned.
 - Gotcha: needs Automation permission for Finder on first use (prompt appears once).

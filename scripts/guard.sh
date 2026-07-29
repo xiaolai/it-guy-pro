@@ -20,6 +20,13 @@
 # when osascript (every Mac) can parse the payload, and against the raw
 # JSON payload as a fallback. Regexes cannot be perfect; the failure
 # direction is safe — a false positive blocks, and Claude rephrases.
+#
+# Threat model: this guard protects against ACCIDENTAL destruction and
+# coarse prompt-injection outcomes. It is text matching, not shell
+# simulation — a deliberately obfuscated command (quote-splitting,
+# encode-then-eval) can evade it. The layered defenses for that case are
+# the it-core contract (untrusted-data rules), the indirection "ask"
+# tiers below, and Claude Code's own permission system.
 
 payload="$(cat)"
 
@@ -104,11 +111,25 @@ hiti 'empty[[:space:]]+(the[[:space:]]+)?trash' && deny \
 hit '\.Trash' && hit '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
   "Only the user empties the Trash. Tell them how much space it would free and let them do it in Finder."
 
+# ---------- Tier 1.5: destructive commands with unresolvable targets ----------
+# ".." segments and command substitution hide a command's real target from
+# the path checks below (e.g. `rm ~/Downloads/../Documents/x` contains no
+# literal `~/Documents`). When a destructive verb is present, refuse to
+# guess what an indirect path resolves to.
+
+DESTRUCTIVE='((^|[^a-zA-Z0-9_])rm[[:space:]]|[[:space:]]-delete([[:space:]]|$)|xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)|(chmod|chown)[[:space:]]+-[a-zA-Z]*R)'
+if hit "$DESTRUCTIVE"; then
+  hit '\.\.' && deny \
+    "Paths containing .. hide their real target from safety checks. Re-run with the fully resolved absolute path (no .. segments, no brace ranges)."
+  hit '\$\(|`' && ask \
+    "This delete/permission change builds its target indirectly, so the guard cannot verify what it points at. Confirm with the user, or re-run with explicit absolute paths."
+fi
+
 # ---------- Tier 2: deny rm/find-delete/xargs-rm on user content ----------
 
 if hit "$PROT"; then
   hit '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
-    "Never rm user content. Move it to the Trash instead so the user can undo: osascript -e 'tell application \"Finder\" to delete POSIX file \"/full/path\"' (see the it-guy-pro macos-recipes skill)."
+    "Never rm user content. Move it to the Trash instead so the user can undo — use the argv-form osascript Trash recipe in the it-guy-pro macos-recipes skill."
   hit '(^|[^a-zA-Z0-9_])find[[:space:]]' && hit '[[:space:]]-delete([[:space:]]|$)' && deny \
     "Never mass-delete user content with find. List the candidates, show them to the user, then move approved items to the Trash."
   hit 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && deny \
@@ -128,6 +149,18 @@ hit 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && ask \
 
 hit '(curl|wget)[^|;&]*\|[^|]*(ba|z|da|k)?sh([[:space:]]|$)' && ask \
   "This pipes an installer from the internet straight into a shell. Download it first, tell the user in one sentence what it installs, then run the reviewed file."
+
+hit '\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|da|k)?sh([[:space:]]|$)' && ask \
+  "This pipes generated content straight into a shell, so the guard cannot inspect what will actually run. Show the user the content first, or run the steps directly."
+
+hit '(^|[^a-zA-Z0-9_])eval[[:space:]]' && ask \
+  "eval executes constructed text the guard cannot inspect. Run the steps directly instead, or confirm with the user."
+
+hit 'do[[:space:]]+shell[[:space:]]+script' && ask \
+  "AppleScript reaching back into the shell bypasses command inspection. Run the shell part directly so it can be checked."
+
+hit '(python3?|perl|ruby|node)[[:space:]]+(-[a-zA-Z[:space:]]+)*-?-(c|e|eval)[[:space:]]' && hit '(os\.system|subprocess|popen|child_process|execSync|spawnSync)' && ask \
+  "This inline script shells out from inside an interpreter, which bypasses command inspection. Run the shell command directly, or confirm with the user."
 
 hit 'softwareupdate[[:space:]]+(-[a-zA-Z]*i[a-zA-Z]*|--install)' && ask \
   "System updates can restart the machine and take a long time — the user should explicitly approve this."

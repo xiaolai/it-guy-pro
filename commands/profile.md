@@ -20,7 +20,10 @@ Print `~/ITGuy/machine.md` verbatim, then a two-line footer:
 
 ## update
 
-Use AskUserQuestion to find out what changed (options: my work/goals changed, my folder habits changed, remove something that's wrong, something else). Apply the edit to the right section, respecting the schema's rules: 120-line cap, newest-first quirks, replace-in-place for facts, and never store passwords, serial numbers, IPs, or account emails — if the user offers one, decline it and say why in one sentence. Show a before/after diff of the changed lines. Append the visit line to `~/ITGuy/visits.log`.
+1. Use AskUserQuestion to find out what changed (options: my work/goals changed, my folder habits changed, remove something that's wrong, something else).
+2. Apply the edit to the right section, respecting the schema's rules: 120-line cap, newest-first quirks, replace-in-place for facts, and never store passwords, serial numbers, IPs, or account emails — if the user offers one, decline it and say why in one sentence.
+3. Show a before/after diff of the changed lines.
+4. Append the visit line to `~/ITGuy/visits.log`.
 
 ## forget
 

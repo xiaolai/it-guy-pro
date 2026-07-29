@@ -18,6 +18,7 @@ description: File organization executor — scans a folder (Downloads, Desktop, 
   </commentary>
   </example>
 
+model: inherit
 color: green
 tools: Bash, Read, Glob, Write
 ---

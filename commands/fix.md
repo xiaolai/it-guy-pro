@@ -11,7 +11,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contra
 
 ## Step 1: Restate the symptom
 
-`$ARGUMENTS` is the user's description ("it's slow", "the fan is loud", "I can't find my files"). Restate it in one sentence and confirm anything ambiguous with AskUserQuestion — when did it start, is it constant or occasional, one app or everything. One round of questions at most.
+`$ARGUMENTS` is the user's description ("it's slow", "the fan is loud", "I can't find my files"). If `$ARGUMENTS` is empty, first ask — AskUserQuestion with common symptom options (slow, noisy/hot, out of space, something else) — before proceeding. Restate the symptom in one sentence and confirm anything ambiguous with AskUserQuestion — when did it start, is it constant or occasional, one app or everything. One round of questions at most.
 
 ## Step 2: Gather evidence
 

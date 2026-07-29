@@ -11,7 +11,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` and `${CLAUDE_PLUGIN_ROOT}/
 
 ## Step 1: Clarify the chore into a spec
 
-`$ARGUMENTS` is the chore in the user's words ("every week I rename my scans", "I always convert HEIC photos before emailing them"). Turn it into a spec — at most one AskUserQuestion round for whatever is genuinely ambiguous:
+`$ARGUMENTS` is the chore in the user's words ("every week I rename my scans", "I always convert HEIC photos before emailing them"). If `$ARGUMENTS` is empty, ask first: "What's the chore? Describe it the way you'd describe it to a friend." — then continue. Turn the description into a spec — at most one AskUserQuestion round for whatever is genuinely ambiguous:
 
 - **Input**: which folder/files, identified how
 - **Action**: what happens to them, including the exact naming/format rule
