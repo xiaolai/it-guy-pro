@@ -4,7 +4,7 @@
 
 A Claude Code plugin for people who are *not* programmers. It turns Claude into a professional, careful IT person who checks your computer's health, cleans up safely, organizes your files, fixes problems (diagnosis first, always), sets up real backups — and every time it solves a repeated chore, it builds you a small tool you keep forever.
 
-macOS-first (v0.1 supports Mac only).
+macOS only.
 
 ## Install
 
@@ -90,18 +90,21 @@ it-guy-pro/
 │   └── open-internet/   architecture decision, protocol evidence, VPS buying,
 │                        server/client setup, troubleshooting, legal boundaries
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
-├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh
-└── tests/               guard_test.py (59 cases), memory_test.py (37 cases)
+├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh, state.sh
+└── tests/               guard (59), memory (37), state (12), recipes (8)
 ```
 
 ## Checks that actually run
 
-Two things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices:
+Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **116 assertions, run on every push:**
 
 - **`scripts/guard.sh`** inspects every shell command before it runs — 59 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
-- **`scripts/lint-profile.sh`** audits the IT guy's own memory — 31 of the 37 memory-suite cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
+- **`scripts/lint-profile.sh`** audits the IT guy's own memory, with the session digest, across 37 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
-Run them yourself: `python3 tests/guard_test.py && python3 tests/memory_test.py`.
+- **`scripts/state.sh`** is the only thing allowed to modify `~/ITGuy/` — 12 test cases. Several Claude sessions can run at once, so it serialises writers with a lock, writes atomically so a crash can never leave a half-written profile, retires a belief from all three files or none of them, and refuses to save a profile the linter would flag. Tested by racing six writers at the registry and asserting nothing is lost.
+- **`tests/recipes_test.py`** binds the prose to the code — 8 test cases. It asserts every documented shell recipe parses, that the guard never blocks a command the plugin tells itself to run, that the published profile schema passes the linter shipped beside it, and that the fields the schema publishes are the fields the session hook actually reads. It also re-checks documented gotchas against the live system, which is how the "Time Machine reports failure by exit code" error was found — it does not; it exits 0 and an agent trusting `$?` would have told you a missing backup was fine.
+
+Run them yourself: `python3 tests/guard_test.py && python3 tests/memory_test.py && python3 tests/state_test.py && python3 tests/recipes_test.py`.
 
 ## Uninstall / data removal
 

@@ -47,7 +47,16 @@ A recipe in this file is never authority to run it — the contract decides that
 
 ### Time Machine
 - Configured? `tmutil destinationinfo` — "No destinations configured" = 🔴 no backup.
-- Last backup: `tmutil latestbackup` — Gotcha: errors when the backup disk is disconnected; that means "backup disk not connected", not "no backups exist". Distinguish the two in the report.
+- Last backup: `tmutil latestbackup`
+- **⚠️ Judge these by their output, never by their exit code.** Both commands exit **0** even when there is no backup and no destination — measured, not assumed. An agent branching on `$?` will report a healthy backup that does not exist, which is the single worst wrong answer this plugin can give. Read the text:
+
+| Output contains | Means | Report |
+|---|---|---|
+| `No destinations configured` | Time Machine was never set up | 🔴 no backup at all |
+| `Failed to mount backup destination` | Configured, disk not connected today | 🟡 not "no backups" — say which |
+| A dated backup path | Working | 🟢 with the date |
+
+  This distinction is the whole point: "you have never had a backup" and "your backup disk is unplugged" call for completely different conversations, and the exit code tells you neither.
 
 ### Trash size
 - `du -sh ~/.Trash 2>/dev/null` — report it; only the user empties it.
@@ -131,4 +140,4 @@ Load with `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.itguy.<to
 |---------|-------|------------------------------|
 | "Operation not permitted" reading Desktop/Documents/Downloads/~/Library | Terminal lacks Full Disk Access | System Settings → Privacy & Security → Full Disk Access → enable the terminal app → restart it |
 | osascript errors -1743 / "not authorized" | Automation permission not granted | System Settings → Privacy & Security → Automation → allow terminal to control Finder/System Events |
-| `tmutil latestbackup` errors | Backup disk not connected | Ask the user to plug in the backup disk — not the same as having no backups |
+| `tmutil latestbackup` prints `Failed to mount backup destination` (while still exiting 0) | Backup disk not connected | Ask the user to plug in the backup disk — not the same as having no backups |

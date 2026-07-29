@@ -48,7 +48,26 @@ All IT Guy state lives in one visible, user-auditable folder:
 | `~/ITGuy/learn/` | Learning maps written by `/it-guy-pro:learn`, one per topic |
 | `~/ITGuy/reports/` | Saved HTML checkup reports |
 
-Any command that writes into one of these directories creates it first if absent. Onboarding creates the set, but no command may assume onboarding has run.
+## Write state through `state.sh`, never by hand
+
+`~/ITGuy/` is a small database — a schema, cross-file integrity between the profile, `history.md` and `ledger.jsonl`, a size cap, and two append-only logs — and several Claude sessions may be running at once. **Mutate it only through `${CLAUDE_PLUGIN_ROOT}/scripts/state.sh`,** which serialises writers with a lock, writes atomically, and refuses to commit a profile the linter rejects.
+
+| Need | Call |
+|------|------|
+| Create the folder set and registry | `bash "$P/scripts/state.sh" init` |
+| Record a visit | `bash "$P/scripts/state.sh" visit <command> <summary> <space>` |
+| Record a belief event | `bash "$P/scripts/state.sh" ledger <event> <subject> [note]` |
+| Retire a belief (all three files, or none) | `bash "$P/scripts/state.sh" demote <subject> <reason>` |
+| Register a built tool | `bash "$P/scripts/state.sh" toolbox-add <name> <pattern> <purpose>` |
+| Record / query a decline | `bash "$P/scripts/state.sh" toolbox-decline <id>` · `toolbox-declined <id>` |
+| Edit the profile body yourself | `bash "$P/scripts/state.sh" with-lock <your command>` |
+| Check current state | `bash "$P/scripts/state.sh" validate` |
+
+(`$P` is `${CLAUDE_PLUGIN_ROOT}`.) Editing these files directly with Write or Edit races other sessions and skips validation. Reading them directly is always fine.
+
+Exit codes: `0` done · `1` error · `3` another session holds the lock, so retry or tell the user · `4` refused because the result would contain a CRITICAL finding — read the message, fix the cause, do not retry blindly.
+
+Any command that writes into one of these directories runs `init` first if absent. Onboarding creates the set, but no command may assume onboarding has run.
 
 Never store passwords, serial numbers, IP addresses, or account credentials in any of these files.
 

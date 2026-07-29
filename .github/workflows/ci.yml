@@ -1,0 +1,53 @@
+name: checks
+
+# The suites must run on macOS: guard.sh parses its payload with JXA
+# (osascript), and without it 32 of 59 guard cases change verdict. A Linux
+# runner would report a green build for a guard that never ran as shipped.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell scripts parse
+        run: for f in scripts/*.sh; do bash -n "$f" || exit 1; done
+
+      - name: Manifests are valid JSON and versions agree
+        run: |
+          python3 -c "
+          import json
+          p = json.load(open('.claude-plugin/plugin.json'))
+          m = json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]
+          assert p['version'] == m['version'], f\"version drift: {p['version']} vs {m['version']}\"
+          json.load(open('hooks/hooks.json'))
+          print('manifests ok, version', p['version'])"
+
+      - name: Guard suite
+        run: python3 tests/guard_test.py
+
+      - name: Memory suite
+        run: python3 tests/memory_test.py
+
+      - name: State suite
+        run: python3 tests/state_test.py
+
+      - name: Repo is English-only
+        run: |
+          python3 -c "
+          import subprocess, unicodedata
+          fs = subprocess.run(['git','ls-files','-z'],capture_output=True,text=True).stdout.split('\0')
+          bad = {(ch, f) for f in filter(None, fs)
+                 for ch in open(f, encoding='utf-8', errors='ignore').read()
+                 if ord(ch) > 127 and unicodedata.category(ch).startswith('L')
+                 and 'LATIN' not in unicodedata.name(ch, '')}
+          assert not bad, f'non-English letters in tracked files: {sorted(bad)}'
+          print('english-only ok')"
+
+      - name: Every documented recipe survives the guard
+        run: python3 tests/recipes_test.py
