@@ -30,7 +30,7 @@ Import the connection: **Profiles → New → paste the `vless://` share link �
 - **Global mode** — everything through the server. Use only when diagnosing.
 - **Direct mode** — off.
 
-Turn on **System Proxy** so ordinary apps use it without configuration. Note the gap plainly: system proxy covers browsers and most GUI apps, but command-line tools and anything with its own network stack — Docker, some Electron apps, and several CLI package managers — ignore it. TUN mode captures those and is the fix when a specific app misbehaves; it needs an admin approval prompt on first use.
+Turn on **System Proxy** so ordinary apps use it without configuration. Note the gap plainly: system proxy covers browsers and any app that uses the system's networking. It does not cover tools that read the `HTTP_PROXY` and `HTTPS_PROXY` environment variables instead — `npm`, `pip`, and Docker among them — nor apps that ship their own network stack. The test is simple: if System Proxy is on and one specific app still cannot reach anything, that app is in this category. TUN mode captures them and is the fix; it needs an admin approval prompt on first use.
 
 ## Verify — actually test, never assume
 

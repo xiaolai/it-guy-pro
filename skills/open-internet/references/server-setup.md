@@ -71,7 +71,7 @@ REALITY impersonates a real site's TLS handshake. The `dest` must:
 - be plausibly reachable from your server's location — a Tokyo box borrowing a Japanese or global CDN-backed site looks natural;
 - **not be the most over-used default.** Everyone borrowing the same handful of hostnames is itself a weak signal.
 
-Reasonable choices for a Japan-hosted box: `www.apple.com`, `swdist.apple.com`, `dl.google.com`, `addons.mozilla.org`, `www.lovelive-anime.jp`. Verify the chosen one before committing:
+Candidates satisfying all five criteria above for a Japan-hosted box: `www.apple.com`, `swdist.apple.com`, `dl.google.com`, `addons.mozilla.org`, `www.lovelive-anime.jp`. Verify the chosen one before committing:
 
 ```bash
 curl -sI --tlsv1.3 --http2 https://www.apple.com | head -3

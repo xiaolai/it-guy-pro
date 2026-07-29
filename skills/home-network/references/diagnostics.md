@@ -37,7 +37,7 @@ Built into macOS since Monterey (2021) at `/usr/bin/networkQuality`, and better 
 | 400–800 | Acceptable |
 | below 400 | **Bufferbloat.** Calls stutter and pages hang *while something else is downloading*, even though the speed number looks fine |
 
-**Bufferbloat is the most common invisible cause of "the internet feels slow."** The user's speed test reads 500 Mbps and everything still lags during a backup or a game update, because oversized buffers queue packets instead of dropping them. It is not fixed by a faster plan or a faster router — it is fixed by enabling **SQM / Smart Queue Management / fq_codel / cake** on the router if it offers it (many do under "QoS" or "Bufferbloat"), or by replacing a router that does not. Diagnosing this correctly is the highest-value thing in this file, because the intuitive fix — pay for more bandwidth — makes no difference at all.
+**Bufferbloat is the most common invisible cause of "the internet feels slow."** The user's speed test reads 500 Mbps and everything still lags during a backup or a game update, because oversized buffers queue packets instead of dropping them. It is not fixed by a faster plan or a faster router — it is fixed by enabling **SQM / Smart Queue Management / fq_codel / cake** on the router if it offers it (many do under "QoS" or "Bufferbloat"), or by replacing a router that does not. Diagnosing this from the idle-versus-loaded RPM gap is the highest-value thing in this file, because the intuitive fix — pay for more bandwidth — makes no difference at all.
 
 Run it twice: once idle, once while a large download runs. The gap between the two RPM figures *is* the bufferbloat.
 

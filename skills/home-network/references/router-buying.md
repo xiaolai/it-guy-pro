@@ -53,7 +53,7 @@ Warn about **double NAT** (two routers both doing NAT): browsing works fine, but
 Frame spending against the problem, not the catalogue:
 
 - **Under €50** — a wired access point, a long Ethernet cable, or a MoCA pair. This tier fixes more real complaints than any other.
-- **€80–150** — a competent Wi-Fi 6 router with SQM support. Sufficient for most homes.
+- **€80–150** — a Wi-Fi 6 router with SQM support. Covers a single-router home of roughly 150 m² (1,600 sq ft) on one floor.
 - **€200–400** — a tri-band mesh set, justified only by a genuinely large or awkward building.
 - **Above that** — needs a specific reason the user can state. If they cannot state it, it is not the right purchase.
 

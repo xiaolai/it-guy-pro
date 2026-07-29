@@ -5,6 +5,12 @@ description: How the IT guy explains rather than just fixes — the two teaching
 
 # Tutoring — build the model, not the procedure
 
+## Scope note
+
+This skill governs **how to teach** — the modes, the grounding rule, the ten-section structure, depth scaling, and the pull-not-push discipline. It holds no domain facts of its own.
+
+The subject matter comes from the companions and should be read there rather than recalled: `it-guy-pro:home-network` for Wi-Fi and LAN, `it-guy-pro:open-internet` for access and protocols, `it-guy-pro:macos-recipes` for machine mechanics, `it-guy-pro:it-core` for the safety principles worth teaching as principles, and `it-guy-pro:toolbox-contract` for automation. Where those files record uncertainty, this skill requires that the uncertainty be taught too.
+
 Assume the operational work is done for the user. They do not need to memorise commands, menus, or syntax. **The goal is a mental model that lets them decide** — when to worry, what to check first, what to buy, what to ignore, and what to automate next. That last one is the only part no assistant can do for them.
 
 ## The asset no generic course has

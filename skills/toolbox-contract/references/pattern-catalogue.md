@@ -22,7 +22,7 @@ Binding everywhere. A suggestion engine that ignores them is spam, and a user wh
 1. **Quote their number, never a pitch.** "I noticed 213 screenshots piled up on your Desktop — want me to file those automatically?" Not "I can help automate your file management!" The number makes it recognition rather than a sales line.
 2. **A decline is permanent.** Append the pattern's **id** — the code in backticks, not the recipe name — to `declined` in `~/ITGuy/toolbox.json`. **If that file does not exist, create it as `{"tools": [], "declined": []}` before writing.** Never raise a declined pattern again. Remove the entry only if the user later asks for that tool themselves.
 3. **Never offer what exists.** Skip a pattern if any registry entry has a matching `pattern` field. Because `/automate` lets users name tools freely, the `pattern` field — not the tool's name — is what marks a pattern as handled; always set it when building from a catalogue recipe.
-4. **When several offers are shown at once** (toolbox only), a decline is recorded **only for patterns the user explicitly rejects** — choosing "none of these" declines all shown; picking one records nothing about the others, which stay eligible next time.
+4. **When up to three offers are shown at once** (the `toolbox` command's cap), a decline is recorded **only for patterns the user explicitly rejects** — choosing "none of these" declines all shown; picking one records nothing about the others, which stay eligible next time.
 5. **Below threshold means silence.** Thresholds mark where a chore becomes genuinely recurring.
 6. **Recent, not historical.** Every signal below pairs a total count with a 30-day count. **If the 30-day count is zero the chore is not recurring** — it is a one-time tidy-up, so point at `/it-guy-pro:organize` instead and offer no tool.
 7. **Check for an existing system.** If the destination folders already exist and are organised, someone has a system; offering to automate it is an insult dressed as help. Ask whether they want it faster, or say nothing.
@@ -86,7 +86,7 @@ find ~/Desktop ~/Downloads ~/Documents -maxdepth 3 -type f \( -iname '*.jpg' -o 
 find ~/Desktop ~/Downloads ~/Documents -maxdepth 3 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \) -size +5M -mtime -30 2>/dev/null | wc -l
 ```
 
-**Threshold:** 10 total, 30-day count above zero. **Offer:** "N of your images are over 5 MB, which is why some of them bounce back from email — want a tool that makes small shareable copies?"
+**Threshold:** 10 total, 30-day count above zero. **Offer:** "N of your images are over 5 MB, which is why attachments that size bounce back from email — want a tool that makes small shareable copies?"
 
 **Recipe — `shrink-images-for-sharing`:** write `-web.jpg` copies; originals untouched.
 
