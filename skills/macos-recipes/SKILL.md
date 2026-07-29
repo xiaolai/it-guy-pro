@@ -44,6 +44,15 @@ Exact commands, expected output shape, and gotchas. Use these verbatim rather th
 ### Trash size
 - `du -sh ~/.Trash 2>/dev/null` — report it; only the user empties it.
 
+### Behavioral observation (for onboarding)
+- Desktop items: `ls ~/Desktop 2>/dev/null | wc -l`
+- Screenshot pileup (English and Chinese naming): `find ~/Desktop -maxdepth 1 \( -name "Screenshot*" -o -name "Screen Shot*" -o -name "SCREENSHOT*" -o -name "SCREENCAP*" \) 2>/dev/null | wc -l`
+- Downloads size and count: `du -sh ~/Downloads 2>/dev/null` and `ls ~/Downloads 2>/dev/null | wc -l`
+- Stale downloads: `find ~/Downloads -maxdepth 1 -atime +90 2>/dev/null | wc -l`
+- Dominant file types: `find ~/Documents ~/Desktop ~/Downloads -maxdepth 2 -type f 2>/dev/null | awk -F. 'NF>1 {print tolower($NF)}' | sort | uniq -c | sort -rn | head -8`
+- Gotcha: all of these need Full Disk Access; "Operation not permitted" here is itself a finding, not a failure.
+- These are observations of the user's *habits* — report counts and proportions, never file names or contents, and never judge ("messy") — describe ("213 screenshots on the Desktop").
+
 ## Safe actions
 
 ### Delete = move to Trash (the only allowed deletion)

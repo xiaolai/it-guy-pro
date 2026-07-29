@@ -18,13 +18,17 @@ Then start with:
 /it-guy-pro:onboard
 ```
 
-The IT guy introduces himself, learns what you use your computer for, and writes down what he learned in a file you can read: `~/ITGuy/machine.md`.
+The IT guy looks over your machine (he doesn't quiz you — the Desktop and Downloads folder tell him more than a questionnaire would), asks you exactly one question — **what to call him** — and writes down what he observed in a file you can read: `~/ITGuy/machine.md`.
+
+## Call him by name
+
+Name him "warren" at onboarding, and from then on typing `warren_` — the name plus an underscore — in **any** Claude session summons him: `warren_ my mac feels slow`. The underscore keeps ordinary mentions of the name from triggering him by accident. No name feels right? Skip it; the slash commands always work.
 
 ## Commands
 
 | Command | What it does |
 |---------|--------------|
-| `/it-guy-pro:onboard` | First visit — interview, machine profile, and a tailored 3-step plan |
+| `/it-guy-pro:onboard` | First visit — observes the machine, asks one question (his name), proposes 3 next steps from evidence |
 | `/it-guy-pro:checkup` | Full health report: disk, memory, startup items, updates, backups, battery. Read-only. Add `--html` for a keepable report |
 | `/it-guy-pro:cleanup` | Reclaim disk space — scan first, you approve categories, everything goes to the Trash (never deleted outright) |
 | `/it-guy-pro:organize` | Sort Downloads, Desktop, photos (by date), or PDFs (by content). Every run writes an undo manifest — `organize undo` reverses it |

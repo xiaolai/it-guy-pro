@@ -20,7 +20,7 @@ Print `~/ITGuy/machine.md` verbatim, then a two-line footer:
 
 ## update
 
-1. Use AskUserQuestion to find out what changed (options: my work/goals changed, my folder habits changed, remove something that's wrong, something else).
+1. Use AskUserQuestion to find out what changed (options: my work/goals changed, my folder habits changed, give the IT guy a new name, remove something that's wrong). Renaming edits the `IT guy: <name>` line and confirms the new calling convention in one sentence ("from now on it's `ollie_`; takes effect next session").
 2. Apply the edit to the right section, respecting the schema's rules: 120-line cap, newest-first quirks, replace-in-place for facts, and never store passwords, serial numbers, IPs, or account emails — if the user offers one, decline it and say why in one sentence.
 3. Show a before/after diff of the changed lines.
 4. Append the visit line to `~/ITGuy/visits.log`.

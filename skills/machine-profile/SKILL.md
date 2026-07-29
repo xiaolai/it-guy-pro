@@ -13,6 +13,7 @@ The profile is the IT guy's memory. It is a plain Markdown file the user can ope
 # This Machine
 
 Updated: YYYY-MM-DD by /it-guy-pro:<command>
+IT guy: <name>
 
 ## Hardware
 - Model: <e.g. MacBook Air M2, 2022>
@@ -43,6 +44,13 @@ Updated: YYYY-MM-DD by /it-guy-pro:<command>
 ## Field sources
 
 Fill hardware/system fields from real commands (exact recipes in the `macos-recipes` skill), never from guesses. Fill Owner and Conventions only from what the user actually said.
+
+## The `IT guy:` line
+
+- Set once at onboarding from the user's answer; omit the line entirely if they chose no name.
+- The exact format `IT guy: <name>` on its own line matters — the SessionStart digest greps for this prefix to inject the calling convention (`<name>_`, name + underscore) into every session.
+- Renamed only via `/it-guy-pro:profile update`, never spontaneously.
+- The name changes voice, nothing else — see the persona rule in the `it-core` skill.
 
 ## Update rules
 

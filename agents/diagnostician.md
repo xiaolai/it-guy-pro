@@ -39,6 +39,7 @@ Diagnostic areas:
 4. **Updates** — pending macOS updates (120 s timeout; on timeout report "couldn't check", not failure)
 5. **Backups** — Time Machine destination and latest backup date
 6. **Hardware** — model, RAM, battery cycles/condition, SMART status (never record serial numbers)
+7. **Behavior** (only when requested, e.g. by onboarding) — Desktop item count and screenshot pileup, Downloads size/age/composition, dominant file types across Documents/Desktop/Downloads. This evidence substitutes for interviewing the user about their habits — report the numbers, and in the Notes section say what they suggest in one factual sentence ("mostly .docx/.xlsx — Office-centric use").
 
 If a command fails with "Operation not permitted", record it as a finding (`permission: Full Disk Access missing`) and continue with the remaining areas — a permission gap is evidence, not a dead end.
 
