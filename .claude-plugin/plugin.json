@@ -1,0 +1,22 @@
+{
+  "name": "it-guy-pro",
+  "version": "0.1.0",
+  "description": "Personal IT guy for non-technical users — remembers your machine, guards every action, and leaves reusable tools behind",
+  "author": {
+    "name": "xiaolai"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/xiaolai/it-guy-pro-for-claude",
+  "repository": "https://github.com/xiaolai/it-guy-pro-for-claude",
+  "category": "productivity",
+  "keywords": [
+    "it-support",
+    "maintenance",
+    "cleanup",
+    "file-organization",
+    "backup",
+    "automation",
+    "non-technical-users",
+    "macos"
+  ]
+}
