@@ -35,7 +35,16 @@ Use AskUserQuestion for the choice, then apply exactly that option. Anything req
 ## Step 5: Verify and remember
 
 - Re-run the exact diagnostic from Step 2 that showed the problem; show before/after values. If unchanged, say the fix didn't take and return to Step 3 with the remaining options — never claim success without evidence.
-- Append the visit line to `~/ITGuy/visits.log`. If the symptom is likely to recur (or this is its second appearance), add a dated Known Quirks entry to the profile.
+- Append the visit line to `~/ITGuy/visits.log`. If the symptom is likely to recur, or this is its second appearance, record it under **`## Live Conclusions`** in the profile — never under any other heading, because only that section is covered by the retest-and-demote machinery.
+
+  A diagnosis is the `concluded` provenance class, which the machine-profile skill calls the dangerous one: it is an inference, and an inference nobody retests silently biases every later diagnosis toward a cause that may be gone. So the entry carries both a retest date and the command that would confirm it:
+
+  ```markdown
+  - 2026-07-30 · fan loud when many browser tabs are open (concluded 2026-07-30, retest by 2026-10-30)
+    retest: ps -Ao pcpu,comm -r | head -5 while the user reports the noise
+  ```
+
+  An entry without a `retest by` date and a `retest:` line is a rumour with a date on it, and `lint-profile.sh` will reject it.
 
 ## Errors
 

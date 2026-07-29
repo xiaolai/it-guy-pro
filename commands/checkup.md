@@ -27,7 +27,7 @@ Rules:
 
 ## Step 2b: One automation offer — only when the machine has earned it
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/references/pattern-catalogue.md` and run its signals. Its rules are binding, and three of them decide whether you say anything at all:
+Read `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/SKILL.md` and then its `references/pattern-catalogue.md` — the catalogue's rules refer to the `declined` array, the `pattern` field, and the registry schema, all of which are *defined* in the parent skill, so loading the reference alone leaves those terms undefined. Run its signals. Its rules are binding, and three of them decide whether you say anything at all:
 
 - **Skip this step entirely if any 🔴 finding is open.** A full disk or a missing backup outranks any convenience, and raising both at once buries the one that matters.
 - **Skip any pattern already in `declined` or already built** in `~/ITGuy/toolbox.json`.

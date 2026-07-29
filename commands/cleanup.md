@@ -1,7 +1,7 @@
 ---
 name: cleanup
 description: "Guided disk space reclaim — scan, show findings with sizes, move only approved items to Trash"
-allowed-tools: Read, Bash, Glob, Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Bash, Glob, Task, AskUserQuestion
 ---
 
 # Cleanup — reclaim space without breaking anything

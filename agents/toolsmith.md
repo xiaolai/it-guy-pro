@@ -38,7 +38,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/SKILL.md` before building an
 4. **Write the `.command` wrapper** and `chmod +x` both it and the script.
 5. **Test the dry-run against the user's real target folder.** The preview output must match the spec's success criteria. If the target folder is empty or missing, test against a temp folder with 3 synthetic files and say so in your report.
 6. **Never run `--go` yourself.** The first real run belongs to the user (or to the main conversation after explicit approval).
-7. **Register the tool** in `~/ITGuy/toolbox.json` (create the file with `{"tools": []}` if missing).
+7. **Register the tool** in `~/ITGuy/toolbox.json` (create the file with `{"tools": [], "declined": []}` if missing).
 
 ## Upgrade procedure (evolve)
 

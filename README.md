@@ -35,7 +35,7 @@ The leading underscore is the trigger; the everyday word "it" never summons him,
 | Command | What it does |
 |---------|--------------|
 | `/it-guy-pro:onboard` | First visit — observes the machine, asks one question (your name), proposes 3 next steps from evidence |
-| `/it-guy-pro:checkup` | Full health report: disk, memory, startup items, updates, backups, battery. Read-only. Add `--html` for a keepable report |
+| `/it-guy-pro:checkup` | Full health report: disk, memory, startup items, updates, backups, battery. Changes nothing on your Mac; it does update its own notes. Add `--html` for a keepable report |
 | `/it-guy-pro:cleanup` | Reclaim disk space — scan first, you approve categories, everything goes to the Trash (never deleted outright) |
 | `/it-guy-pro:organize` | Sort Downloads, Desktop, photos (by date), or PDFs (by content). Every run writes an undo manifest — `organize undo` reverses it |
 | `/it-guy-pro:fix "it's slow"` | Describe any problem in your own words — evidence-based diagnosis first, then clearly-explained options |
@@ -75,7 +75,7 @@ And he offers them before you know to ask. Nobody requests an automation they do
 
 ```
 it-guy-pro/
-├── commands/            9 slash commands (above)
+├── commands/            12 slash commands (above)
 ├── agents/              diagnostician (read-only), janitor, librarian, toolsmith
 ├── skills/
 │   ├── it-core/         the 10-rule safety contract, report formats, state layout
@@ -91,7 +91,7 @@ it-guy-pro/
 │                        server/client setup, troubleshooting, legal boundaries
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
 ├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh
-└── tests/               guard_test.py (52 cases), memory_test.py (28 cases)
+└── tests/               guard_test.py (52 cases), memory_test.py (37 cases)
 ```
 
 ## Checks that actually run
@@ -99,7 +99,7 @@ it-guy-pro/
 Two things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices:
 
 - **`scripts/guard.sh`** inspects every shell command before it runs — 52 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
-- **`scripts/lint-profile.sh`** audits the IT guy's own memory — 33 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
+- **`scripts/lint-profile.sh`** audits the IT guy's own memory — 31 of the 37 memory-suite cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
 Run them yourself: `python3 tests/guard_test.py && python3 tests/memory_test.py`.
 

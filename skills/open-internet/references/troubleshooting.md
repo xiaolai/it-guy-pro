@@ -84,4 +84,4 @@ If it no longer answers with TLS 1.3 and HTTP/2, pick a different `dest`, update
 
 ## Record it
 
-Append what happened to the visit log, and if a cause recurs — a particular provider's IP blocked twice, or reliable evening congestion — write it into the profile's Known Quirks. The second occurrence should be diagnosed from memory in one minute, not rediscovered from scratch.
+Append what happened to the visit log, and if a cause recurs — a particular provider's IP blocked twice, or reliable evening congestion — write it into the profile's **`## Live Conclusions`** with a retest date and a retest method, per the machine-profile skill. That heading is the only one the retest-and-demote machinery covers; anything filed elsewhere never expires and quietly skews future diagnosis. The second occurrence should be diagnosed from memory in one minute, not rediscovered from scratch.

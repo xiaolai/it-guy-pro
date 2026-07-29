@@ -31,7 +31,7 @@ Then ask — **one AskUserQuestion call carrying both questions**, not two round
 
 ## Step 4: Write the profile
 
-Create `~/ITGuy/` with subfolders `toolbox/`, `undo/`, `reports/`, and initialise `~/ITGuy/toolbox.json` as `{"tools": [], "declined": []}` so later commands always have a registry to write to. Write `~/ITGuy/machine.md` following the schema exactly:
+Create `~/ITGuy/` with subfolders `toolbox/`, `undo/`, `learn/`, `reports/`, and initialise `~/ITGuy/toolbox.json` as `{"tools": [], "declined": []}` so later commands always have a registry to write to. Write `~/ITGuy/machine.md` following the schema exactly:
 
 - The `Summon: _it` line right under `Updated:` — written explicitly so the user can see it's theirs to change.
 - Hardware/System from diagnostician facts. Never store serial numbers, passwords, IPs, or account emails.

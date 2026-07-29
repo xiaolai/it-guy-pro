@@ -19,11 +19,23 @@ TODAY="$(date +%Y-%m-%d)"
 YEAR_AGO="$(date -v-1y +%Y-%m-%d 2>/dev/null || date -d '1 year ago' +%Y-%m-%d)"
 DAYS60="$(date -v-60d +%Y-%m-%d 2>/dev/null || date -d '60 days ago' +%Y-%m-%d)"
 DAYS180="$(date -v-180d +%Y-%m-%d 2>/dev/null || date -d '180 days ago' +%Y-%m-%d)"
-n=0
+# Finding count lives in a file, not a variable. Several checks emit from
+# inside `while read` loops fed by pipes, which bash runs in a SUBSHELL —
+# a variable incremented there never reaches the parent, so the script
+# would print CRITICAL findings and still exit 0. That silent, selective
+# failure hit exactly the six secret-detection rules: a profile holding a
+# VPN share link reported "clean" to any caller branching on exit code.
+COUNT="$(mktemp -t itg-lint)"
+TMPOUT="$(mktemp -t itg-lint-out)"
+trap 'rm -f "$COUNT" "$TMPOUT"' EXIT
+printf '0' > "$COUNT"
 
-say() { printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4"; n=$((n+1)); }
+bump() { printf 'x' >> "$COUNT"; }
+findings() { c=$(wc -c < "$COUNT" | tr -d ' '); echo $((c - 1)); }
 
-[ -f "$PROFILE" ] || { echo "INFO|no-profile|$PROFILE|No profile yet — run /it-guy-pro:onboard"; exit 2; }
+say() { printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4"; bump; }
+
+[ -f "$PROFILE" ] || { echo "INFO|no-profile|$PROFILE|No profile yet — run /it-guy-pro:onboard"; rm -f "$COUNT"; exit 2; }
 
 # ---------- Secrets that must never be stored (highest severity) ----------
 # The schema forbids these; until now nothing verified it. Scans history too,
@@ -55,9 +67,8 @@ awk -v today="$TODAY" '
     if ($0 !~ /\((measured|observed|you told me|concluded)[^)]*\)/)
       printf "WARN|untagged|machine.md:%d|Fact has no provenance tag (measured/observed/you told me/concluded) so it can never be retired\n", NR
   }
-' "$PROFILE" | while IFS= read -r l; do echo "$l"; n=$((n+1)); done
-u=$(awk '/^## /{sec=substr($0,4);next} sec ~ /^(Hardware|System|Owner|Conventions|Live Conclusions)$/ && /^- / && $0 !~ /\((measured|observed|you told me|concluded)[^)]*\)/ {c++} END{print c+0}' "$PROFILE")
-n=$((n+u))
+' "$PROFILE" > "$TMPOUT"
+while IFS= read -r l; do [ -n "$l" ] && { echo "$l"; bump; }; done < "$TMPOUT"
 
 # ---------- Conclusions: retest date and retest method are mandatory -----
 awk '
@@ -70,11 +81,8 @@ awk '
   pend && /^[[:space:]]*retest:/ { pend=0; next }
   pend && NF { printf "ERROR|no-retest-method|machine.md:%d|Conclusion is not followed by a \"retest:\" line saying how to confirm it\n", pend; pend=0 }
   END { if (pend) printf "ERROR|no-retest-method|machine.md:%d|Conclusion is not followed by a \"retest:\" line saying how to confirm it\n", pend }
-' "$PROFILE"
-c=$(awk '/\(concluded/{if($0 !~ /retest by [0-9]{4}-[0-9]{2}-[0-9]{2}/)x++} END{print x+0}' "$PROFILE")
-n=$((n+c))
-c=$(awk '/\(concluded/{pend=NR;next} pend && /^[[:space:]]*retest:/{pend=0;next} pend && NF{x++;pend=0} END{if(pend)x++; print x+0}' "$PROFILE")
-n=$((n+c))
+' "$PROFILE" > "$TMPOUT"
+while IFS= read -r l; do [ -n "$l" ] && { echo "$l"; bump; }; done < "$TMPOUT"
 
 # ---------- Overdue retests ----------
 for d in $(grep -oE 'retest by [0-9]{4}-[0-9]{2}-[0-9]{2}' "$PROFILE" 2>/dev/null | awk '{print $3}'); do
@@ -123,7 +131,16 @@ done
 # Non-ASCII in a field label is the direct form of the same bug. LC_ALL=C
 # makes the byte range literal; the \xNN form is not portable to BSD grep
 # and silently matches nothing here.
-bad_labels="$(LC_ALL=C grep -n '^-\{0,1\} *[^:]*[^ -~][^:]*:' "$PROFILE" 2>/dev/null | cut -d: -f1)"
+#
+# Scoped to field-bearing sections only, and to a short pre-colon run. The
+# schema MANDATES a "·" separator in Live Conclusions, and any conclusion
+# text containing a colon would otherwise be flagged — causing the agent to
+# "repair" a correct line by deleting the separator the schema requires.
+# A linter that mutates correct data is worse than no linter.
+bad_labels="$(awk '
+  /^## / { sec=substr($0,4); next }
+  sec ~ /^(Hardware|System|Owner|Private Connection)$/ && /^- [^:]{1,24}:/ { print NR ":" $0 }
+' "$PROFILE" 2>/dev/null | LC_ALL=C grep '^[0-9]*:- [^:]*[^ -~][^:]*:' | cut -d: -f1)"
 for ln in $bad_labels; do
   say ERROR non-ascii-label "machine.md:$ln" "Field label contains non-ASCII characters — values may be in any language, labels may not"
 done
@@ -157,5 +174,5 @@ if [ -f "$LEDGER" ]; then
   done
 fi
 
-[ "$n" -gt 0 ] && exit 1
+[ "$(findings)" -gt 0 ] && exit 1
 exit 0

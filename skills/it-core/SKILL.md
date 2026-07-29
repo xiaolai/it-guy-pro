@@ -45,7 +45,10 @@ All IT Guy state lives in one visible, user-auditable folder:
 | `~/ITGuy/toolbox.json` | Registry of built tools (schema in the `toolbox-contract` skill) |
 | `~/ITGuy/toolbox/<tool-name>/` | One folder per tool: script + plain-language README |
 | `~/ITGuy/undo/` | CSV manifests for reversing batch moves |
+| `~/ITGuy/learn/` | Learning maps written by `/it-guy-pro:learn`, one per topic |
 | `~/ITGuy/reports/` | Saved HTML checkup reports |
+
+Any command that writes into one of these directories creates it first if absent. Onboarding creates the set, but no command may assume onboarding has run.
 
 Never store passwords, serial numbers, IP addresses, or account credentials in any of these files.
 

@@ -2,7 +2,7 @@
 name: organize
 description: "Organize files — Downloads triage, Desktop, date-sorted photos, content-classified PDFs. Every run is undoable."
 argument-hint: "[downloads|desktop|photos|pdfs|undo]"
-allowed-tools: Read, Write, Bash, Glob, Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Bash, Glob, Task, AskUserQuestion
 ---
 
 # Organize — order without loss

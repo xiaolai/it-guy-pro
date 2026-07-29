@@ -1,7 +1,7 @@
 ---
 name: backup
 description: "Backup audit and setup — find out what would survive if this computer died tonight, then close the gaps"
-allowed-tools: Read, Write, Bash, Glob, Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Bash, Glob, Task, AskUserQuestion
 ---
 
 # Backup — the most important visit

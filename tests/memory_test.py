@@ -236,14 +236,80 @@ def _():
     assert "translated-label" in rules(r.stdout), r.stdout
 
 
+@case("schema-mandated conclusion separator is not flagged as a bad label")
+def _():
+    # The schema REQUIRES a "·" separator in Live Conclusions. A conclusion
+    # whose text contains a colon must not trip the non-ASCII label check —
+    # otherwise the agent "repairs" a correct line and destroys the user's
+    # own recorded observation.
+    prof = CLEAN.replace(
+        f"- Fan loud with many browser tabs (concluded {TODAY}, retest by {FUTURE})",
+        f"- {TODAY} · Chrome spikes CPU: 180% during video calls (concluded {TODAY}, retest by {FUTURE})")
+    r = run(LINT, make(prof))
+    assert "non-ascii-label" not in rules(r.stdout), (
+        f"false positive on the schema's own mandated format:\n{r.stdout}")
+
+
 @case("non-ASCII label check actually fires (guards against dead code)")
 def _():
-    # A language-neutral non-ASCII character is enough to exercise the
-    # LC_ALL=C byte-range test.
-    r = run(LINT, make(CLEAN + "\n## Notes\n- ★Setting: value\n"))
+    # A language-neutral non-ASCII character exercises the LC_ALL=C
+    # byte-range test. It must sit in a field-bearing section, since the
+    # check is deliberately scoped to those to avoid flagging the "·"
+    # separator the schema mandates in Live Conclusions.
+    r = run(LINT, make(CLEAN.replace(f"- Call me: Ada (you told me {TODAY})",
+                                     f"- Call me: Ada (you told me {TODAY})\n- ★Bad: x (observed {TODAY})")))
     assert "non-ascii-label" in rules(r.stdout), (
         "the LC_ALL=C byte-range check silently matched nothing — "
         f"a check that never fires is worse than none:\n{r.stdout}")
+
+
+# ------------------------------------------------- exit-code contract ---
+# Regression guard for a real bug: every secret rule emitted from inside a
+# `grep | while` pipeline, which bash runs in a subshell, so the finding
+# counter never reached the parent and the script exited 0 while printing
+# CRITICAL findings. A caller branching on the exit code concluded that a
+# profile holding a VPN share link was clean. The suite missed it because
+# it asserted on stdout only. Assert the CODE for every rule family.
+@case("exit code is 1 whenever any single rule fires, one family at a time")
+def _():
+    tagged = f"(observed {TODAY})"
+    families = {
+        "credential":     f"- Note: link vless://abc@203.0.113.9:443 {tagged}",
+        "private-ip":     f"- Note: router at 192.168.1.1 {tagged}",
+        "mac-address":    f"- Note: printer aa:bb:cc:dd:ee:ff {tagged}",
+        "uuid":           f"- Note: id 550e8400-e29b-41d4-a716-446655440000 {tagged}",
+        "secret-value":   f"- Note: password: hunter2 {tagged}",
+        "email":          f"- Note: contact ada@example.com {tagged}",
+    }
+    for rule, line in families.items():
+        r = run(LINT, make(CLEAN + f"\n## Notes\n{line}\n"))
+        assert rule in rules(r.stdout), f"{rule}: not detected\n{r.stdout}"
+        assert r.returncode == 1, (
+            f"{rule}: printed a finding but exited {r.returncode} — a caller "
+            f"branching on the exit code would treat this profile as clean\n{r.stdout}")
+
+
+@case("exit code is 1 for non-secret rule families too")
+def _():
+    cases = {
+        "no-retest-date": CLEAN.replace(f"(concluded {TODAY}, retest by {FUTURE})", f"(concluded {TODAY})"),
+        "overdue-retest": CLEAN.replace(f"retest by {FUTURE}", f"retest by {PAST}"),
+        "bad-summon":     CLEAN.replace("Summon: _it", "Summon: it"),
+        "untagged":       CLEAN.replace(f"- Memory: 16 GB (measured {TODAY})", "- Memory: 16 GB"),
+    }
+    for rule, profile in cases.items():
+        r = run(LINT, make(profile))
+        assert rule in rules(r.stdout), f"{rule}: not detected\n{r.stdout}"
+        assert r.returncode == 1, f"{rule}: exited {r.returncode}, expected 1\n{r.stdout}"
+
+
+@case("findings are counted once, not double-counted")
+def _():
+    # The pre-fix code compensated for the subshell by recomputing some
+    # counts with awk; with the counter fixed, those would double-count.
+    r = run(LINT, make(CLEAN.replace(f"- Memory: 16 GB (measured {TODAY})", "- Memory: 16 GB")))
+    untagged = [l for l in r.stdout.splitlines() if "|untagged|" in l]
+    assert len(untagged) == 1, f"expected exactly one untagged finding, got {len(untagged)}:\n{r.stdout}"
 
 
 # ------------------------------------------------------------- ledger ---

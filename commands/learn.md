@@ -41,7 +41,7 @@ If nothing notable happened recently, say so rather than manufacturing a lesson.
 2. **Gather the user's own evidence** for this topic from the profile, ledger, and visit log, so the map opens with their machine rather than an abstraction.
 3. **Consult the plugin's own skills first** — they are verified and carry stated uncertainty. `home-network` for Wi-Fi and LAN, `open-internet` for access and protocols, `macos-recipes` and `it-core` for machine care, `toolbox-contract` for automation. Use the web only for what the skills do not cover, and prefer the authoritative sources those skills name over open search.
 4. **Write the ten-section map** per the tutoring skill, with review-by dates on the changing-knowledge half and no dates on the principles.
-5. **Save** to `~/ITGuy/learn/<topic>.md`, tell the user the path, and append a `learned` event to `ledger.jsonl` naming the topic.
+5. **Save** to `~/ITGuy/learn/<topic>.md`, creating `~/ITGuy/learn/` if it does not exist — onboarding creates it, but a user may reach this command first. Tell them the path, and append a `learned` event to `ledger.jsonl` naming the topic.
 
 Carry the source skills' uncertainty into the map. Where they say no credible measurement exists or that sources conflict, the map says so too.
 
