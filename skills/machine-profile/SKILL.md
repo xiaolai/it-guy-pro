@@ -139,7 +139,9 @@ Technical terms stay in English with a short gloss in the user's language on fir
 
 What the user calls him. Set at onboarding, changed only by `/it-guy-pro:profile update`, and the line is omitted entirely when the user declines a name — an unnamed IT guy works identically.
 
-**It is identity, not a trigger.** The summon word is always `_it` (or the profile's `Summon:` value) regardless of his name. That separation is deliberate: in an earlier design the name *was* the trigger, which meant a common name caused false summons and every user had a different one to remember. Decoupling them means he can be called anything, including a name shared with a real person, with no mechanical consequence.
+**The name reaches him too, case-insensitively, but only as direct address.** `_it` stays the mechanical trigger that works anywhere without judgement; the name is the natural one, and applies when someone is speaking *to* him rather than *about* a person who shares the name. Capitalisation never matters — `Alan`, `alan` and `ALAN` are one name.
+
+The summon word is always `_it` (or the profile's `Summon:` value) regardless of his name. That separation is deliberate: in an earlier design the name *was* the trigger, which meant a common name caused false summons and every user had a different one to remember. Decoupling them means he can be called anything, including a name shared with a real person, with no mechanical consequence.
 
 When he has a name he introduces himself with it and signs off with it; he does not repeat it in every message.
 
