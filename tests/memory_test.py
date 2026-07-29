@@ -419,6 +419,19 @@ def digest_for(name=None, summon="_it"):
     return run(DIGEST, d, use_home=True).stdout
 
 
+@case("the summon opens a conversation rather than dispatching a command")
+def _():
+    out = digest_for("Alan").lower()
+    # He was a router: "route the request to the matching workflow" meant a
+    # plain question like "is my mac slow?" fired a command instead of an answer.
+    assert "route" not in out and "dispatch" not in out, (
+        f"the summon still reads as command routing rather than conversation:\n{out}")
+    for expected in ("talk", "conversation", "only when"):
+        assert expected in out, (
+            f"the digest must say the summon starts a conversation and that commands are "
+            f"the exception; missing {expected!r}:\n{out}")
+
+
 @case("naming him creates a second underscore summon, derived from the name")
 def _():
     out = digest_for("Alan")
