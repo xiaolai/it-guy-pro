@@ -66,6 +66,16 @@ PROT='(~|\$HOME|/Users/[^/[:space:]"'\'']+)/(Documents|Desktop|Downloads|Picture
 
 # ---------- Tier 1: always deny ----------
 
+# Remote root over ssh is not local privilege escalation — administering a
+# VPS legitimately needs it. Downgrade sudo to "ask" ONLY when the command
+# starts with ssh and carries no locally-executed option: ProxyCommand and
+# LocalCommand run on THIS machine, so a sudo there is local escalation in
+# an ssh costume.
+if hit '^[[:space:]]*ssh[[:space:]]' && ! hiti '(proxycommand|localcommand)'; then
+  hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && ask \
+    "This runs sudo on the remote server, not on this Mac. Confirm the target host with the user, and remember the guard cannot protect the far end."
+fi
+
 hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && deny \
   "sudo is never run by the agent. Give the user the exact command to run themselves (tell them to type '! <command>' in the prompt) plus a one-sentence plain-language explanation of what it does."
 
@@ -152,6 +162,9 @@ hit '(curl|wget)[^|;&]*\|[^|]*(ba|z|da|k)?sh([[:space:]]|$)' && ask \
 
 hit '\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|da|k)?sh([[:space:]]|$)' && ask \
   "This pipes generated content straight into a shell, so the guard cannot inspect what will actually run. Show the user the content first, or run the steps directly."
+
+hit '<\([[:space:]]*(curl|wget)' && ask \
+  "This runs a downloaded script through process substitution, which hides the content from inspection just like piping to a shell. Download it first, tell the user what it installs, then run the reviewed file."
 
 hit '(^|[^a-zA-Z0-9_])eval[[:space:]]' && ask \
   "eval executes constructed text the guard cannot inspect. Run the steps directly instead, or confirm with the user."

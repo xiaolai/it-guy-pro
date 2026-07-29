@@ -35,6 +35,14 @@ Summon: _it
 - <folder habits, e.g. "Screenshots pile up on Desktop; wants them auto-filed">
 - <naming habits, e.g. "Prefers YYYY-MM-DD prefixes on documents">
 
+## Private Connection
+- Status: <working | blocked | needs setup>
+- Provider / region: <e.g. Vultr, Osaka>
+- Architecture: <direct-reality | cdn-fronted | both>
+- Client app: <e.g. Clash Verge Rev>
+- Renews: YYYY-MM-DD
+- Last verified: YYYY-MM-DD
+
 ## Known Quirks
 - YYYY-MM-DD: <recurring issue or hardware oddity, newest first>
 
@@ -52,6 +60,12 @@ Fill hardware/system fields from real commands (exact recipes in the `macos-reci
 - `- Call me: <name>` (in Owner) — how the IT guy addresses the user. Set from the one onboarding question; a preferred form of address, never an identity.
 - Both change only via `/it-guy-pro:profile update`, never spontaneously.
 - Neither changes authority — see the summon rule in the `it-core` skill.
+
+## The `Private Connection` section
+
+Written only by `/it-guy-pro:open-internet`; omit the whole section when no server exists. `Status` is the field other commands branch on, so keep it accurate: `working` means verified on the date in `Last verified`, `blocked` means diagnosed as blocked and not yet fixed, `needs setup` means started but not finished.
+
+**Never record here (or anywhere in `~/ITGuy/`): the share link, UUID, private or public keys, shortId, server password, or SSH key.** Those are credentials; the profile is a memo. The provider, region, and renewal date are enough for the IT guy to be useful next visit.
 
 ## Update rules
 

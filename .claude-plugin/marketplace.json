@@ -13,8 +13,8 @@
         "source": "github",
         "repo": "xiaolai/it-guy-pro"
       },
-      "description": "Personal IT guy for non-technical users — 9 plain-language commands (checkup, cleanup, organize, fix, automate, toolbox, backup, onboard, profile), 4 specialized agents, observation-first onboarding that asks exactly one question (your name — the IT guy himself is summoned from any session by typing _it), a machine profile that persists across sessions, a safety hook that blocks destructive shell commands, and a toolbox that turns every repeated chore into a reusable micro-tool. macOS-first.",
-      "version": "0.3.0",
+      "description": "Personal IT guy for non-technical users — 10 plain-language commands (checkup, cleanup, organize, fix, automate, toolbox, backup, open-internet, onboard, profile), 4 specialized agents, observation-first onboarding that asks exactly one question (your name — the IT guy himself is summoned from any session by typing _it), a machine profile that persists across sessions, a safety hook that blocks destructive shell commands, a toolbox that turns every repeated chore into a reusable micro-tool, and an evidence-based guide to building your own private internet connection. macOS-first.",
+      "version": "0.4.0",
       "author": {
         "name": "xiaolai"
       },
@@ -29,7 +29,8 @@
         "backup",
         "automation",
         "non-technical-users",
-        "macos"
+        "macos",
+        "privacy"
       ],
       "category": "productivity"
     }

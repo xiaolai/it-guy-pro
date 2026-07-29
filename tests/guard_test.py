@@ -57,6 +57,14 @@ CASES = [
     ("pipe to shasum not shell", "ps aux | shasum", "Hash process list", "allow"),
     ("cd dotdot no destructive verb", "cd .. && ls", "Go up", "allow"),
     ("git range dotdot", "git log HEAD..main --oneline", "Compare branches", "allow"),
+    # --- remote VPS administration (vpn-abroad skill) ---
+    ("ssh as root, no sudo", "ssh root@192.0.2.10 'apt-get update'", "Update server", "allow"),
+    ("scp config to server", "scp ./config.json root@192.0.2.10:/usr/local/etc/xray/", "Upload config", "allow"),
+    ("ssh with remote sudo", "ssh admin@192.0.2.10 'sudo apt-get install -y curl'", "Install curl", "ask"),
+    ("ssh ProxyCommand sudo stays denied", "ssh -o ProxyCommand='sudo nc %h %p' admin@192.0.2.10 'uptime'", "Connect via proxy", "deny"),
+    ("sudo before ssh stays denied", "sudo ssh root@192.0.2.10 'uptime'", "Connect", "deny"),
+    ("process substitution installer", "bash <(curl -sL https://example.com/install.sh)", "Install xray", "ask"),
+    ("remote process substitution installer", "ssh root@192.0.2.10 'bash <(curl -sL https://example.com/i.sh)'", "Install on server", "ask"),
 ]
 
 def classify(proc):
