@@ -11,15 +11,15 @@
       "name": "it-guy-pro",
       "source": {
         "source": "github",
-        "repo": "xiaolai/it-guy-pro-for-claude"
+        "repo": "xiaolai/it-guy-pro"
       },
       "description": "Personal IT guy for non-technical users — 9 plain-language commands (checkup, cleanup, organize, fix, automate, toolbox, backup, onboard, profile), 4 specialized agents, a machine profile that persists across sessions, a safety hook that blocks destructive shell commands, and a toolbox that turns every repeated chore into a reusable micro-tool. macOS-first.",
       "version": "0.1.0",
       "author": {
         "name": "xiaolai"
       },
-      "homepage": "https://github.com/xiaolai/it-guy-pro-for-claude",
-      "repository": "https://github.com/xiaolai/it-guy-pro-for-claude",
+      "homepage": "https://github.com/xiaolai/it-guy-pro",
+      "repository": "https://github.com/xiaolai/it-guy-pro",
       "license": "MIT",
       "keywords": [
         "it-support",
