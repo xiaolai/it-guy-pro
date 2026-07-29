@@ -18,13 +18,11 @@ Then start with:
 /it-guy-pro:onboard
 ```
 
-The IT guy looks over your machine (he doesn't quiz you — the Desktop and Downloads folder tell him more than a questionnaire would), asks you exactly one question — **your name**, so he knows how to address you — and writes down what he observed in a file you can read: `~/ITGuy/machine.md`.
+The IT guy looks over your machine — he doesn't quiz you, since the Desktop and Downloads folder tell him more than a questionnaire would. He asks one short round of questions (what to call him, what to call you, which language to answer in), then writes down what he observed in a file you can read: `~/ITGuy/machine.md`.
 
-## Give him a name, and summon him with `_it`
+## Name him, and summon him with `_it`
 
-At setup he asks what you would like to call him. The name is only identity — how he introduces himself and signs off. **The summon word stays `_it` whatever you call him**, so naming him after a real person causes no confusion, and everyone using this plugin learns the same one-word trigger. Prefer him nameless? Say so; he works identically.
-
-## Summon him with `_it`
+At setup he asks what you'd like to call him — the name is purely identity, how he introduces himself and signs off. **The summon word stays `_it` whatever you name him**, so calling him after a real person causes no confusion and everyone learns the same one-word trigger. Prefer him nameless? Say so; he works identically.
 
 From any Claude session — any project, any topic — typing `_it` as a standalone word summons the IT guy:
 
@@ -38,7 +36,7 @@ The leading underscore is the trigger; the everyday word "it" never summons him,
 
 | Command | What it does |
 |---------|--------------|
-| `/it-guy-pro:onboard` | First visit — observes the machine, asks one question (your name), proposes 3 next steps from evidence |
+| `/it-guy-pro:onboard` | First visit — observes the machine, asks one short round of questions, proposes 3 next steps from evidence |
 | `/it-guy-pro:checkup` | Full health report: disk, memory, startup items, updates, backups, battery. Changes nothing on your Mac; it does update its own notes. Add `--html` for a keepable report |
 | `/it-guy-pro:cleanup` | Reclaim disk space — scan first, you approve categories, everything goes to the Trash (never deleted outright) |
 | `/it-guy-pro:organize` | Sort Downloads, Desktop, photos (by date), or PDFs (by content). Every run writes an undo manifest — `organize undo` reverses it |
