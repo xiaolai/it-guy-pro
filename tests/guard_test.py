@@ -106,6 +106,24 @@ def t_path_spelling_matrix():
     assert not bad, "quoted/normalised spellings bypassed the guard:\n  " + "\n  ".join(bad)
 
 
+def t_program_bodies_are_not_path_braces():
+    """awk/jq/python bodies are full of `{a, b}` and are not brace expansion.
+
+    The rule fired on any brace-with-comma anywhere in a command that also
+    contained a delete, so ordinary text processing was denied whenever a
+    cleanup step shared the line. It blocked this plugin's own development.
+    """
+    allowed = [
+        "rm -rf /tmp/x && awk -F: -v OFS=: '{print $1, substr($0,2)}' f",
+        "rm -rf /tmp/x; sed -e 's/a/b/' | awk '{print $1, $2}'",
+        "rm -rf /tmp/build && jq '{name, version}' p.json",
+        'rm -rf /tmp/z && python3 -c "d={\'a\':1,\'b\':2}"',
+    ]
+    wrongly_denied = [c for c in allowed if guard(c).returncode == 2]
+    assert not wrongly_denied, (
+        "program bodies mistaken for path brace expansion:\n  " + "\n  ".join(wrongly_denied))
+
+
 def t_unresolvable_targets():
     for cmd in ["rm -f ~/{Documents,Desktop}/x.pdf", "rm -f ~/Doc*/tax-return.pdf",
                 "rm -f ~/D?cuments/tax.pdf", "rm -f ~/Downloads/../Documents/x.pdf"]:
@@ -156,6 +174,7 @@ def t_system_chmod_independently_covered():
 EXTRA = [
     ("path spelling matrix (48 combinations)", t_path_spelling_matrix),
     ("unresolvable targets denied", t_unresolvable_targets),
+    ("program bodies are not path brace expansion", t_program_bodies_are_not_path_braces),
     ("home wipe is deny, not ask", t_home_wipe_is_deny),
     ("destruction judged by outcome, not verb", t_destruction_by_outcome),
     ("ssh exemption is single-line only", t_ssh_exemption_single_line_only),

@@ -155,7 +155,12 @@ DESTRUCTIVE='((^|[^a-zA-Z0-9_])(rm|unlink|truncate|shred|srm)[[:space:]]|[[:spac
 if hit "$DESTRUCTIVE"; then
   hitn '\.\.' && deny \
     "Paths containing .. hide their real target from safety checks. Re-run with the fully resolved absolute path — no .. segments, no brace ranges, no wildcards in the folder name."
-  hitn '\{[^}]*,' && deny \
+  # Only braces that are part of a PATH. An awk or sed program body is full of
+  # `{print $1, $2}` and is not brace expansion; requiring a `/` or `~` earlier
+  # in the same token keeps the check on paths, where it belongs. Without this
+  # the guard blocked ordinary text processing whenever a delete appeared
+  # anywhere in the same command.
+  hitn '(~|/)[^[:space:]"'"'"']*\{[^}]*,' && deny \
     "Brace expansion hides how many targets this really has. Re-run once per explicit path so each one can be checked."
   hitn '(~|/Users/[^/[:space:]]+)/[^/[:space:]]*[*?[][^/[:space:]]*/' && deny \
     "A wildcard in the folder name means the guard cannot tell which folders this hits. Name the folder explicitly."
