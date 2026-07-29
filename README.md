@@ -12,6 +12,12 @@ macOS only.
 claude plugin install it-guy-pro@xiaolai
 ```
 
+### Where to start it from
+
+**Open Terminal and type `claude` — that lands you in your home folder, which is exactly right.** Everything the IT guy looks at lives there: your Desktop, Downloads, Documents and Pictures.
+
+Nothing breaks if you start somewhere else. His memory lives at a fixed location (`~/ITGuy/`) that he can reach from anywhere, and `_it` works in any session on any topic. But a session started deep inside a project folder has to reach outside that folder for every scan and every note he writes, which can mean extra permission prompts for no benefit. If you are already working in a project and want him, summon him with `_it` and carry on — only start a *fresh* session in your home folder when the visit itself is the point.
+
 Then start with:
 
 ```
@@ -125,6 +131,7 @@ Run them yourself: `python3 tests/guard_test.py && python3 tests/memory_test.py 
 
 ## Notes for technical users
 
+- The plugin installs at **user scope**, so the guard applies in every directory, including your own repositories — not just when you are doing IT work. That is deliberate (a destructive command is destructive wherever you type it), but it is why `rm -rf node_modules` asks for confirmation while you are coding. Install at project scope instead if you want it confined.
 - The guard hook applies to every Bash call in sessions where the plugin is enabled. If you're a developer, `rm -rf` of build artifacts will trigger a confirm prompt (recursive deletes outside user-content folders are "ask", not "deny") — install at project scope if that bothers you.
 - The hook parses the tool payload with JXA (`osascript -l JavaScript`), which ships on every Mac — no jq/python dependency. On parse failure it falls back to matching the raw payload, which over-blocks rather than under-blocks.
 - Threat model: the guard is text matching, not shell simulation. It reliably stops *accidental* destruction and coarse injection outcomes (plus "ask" tiers for indirection: `..` paths, command substitution, pipe-to-shell, eval, interpreters shelling out). A deliberately obfuscated command can evade it — the layered defenses there are the untrusted-data rules in the it-core skill and Claude Code's own permission system.

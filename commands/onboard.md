@@ -58,7 +58,9 @@ First the evidence, then the offers — reactions, not questions:
 
    Substitute the real derived word: the first word of the chosen name, lowercased, with spaces and punctuation dropped. Omit the second trigger entirely when they declined a name.
 
-4. Close with one sentence, addressing the user by their chosen name: `~/ITGuy/machine.md` is everything the IT guy remembers — theirs to read or edit anytime.
+4. Close with two short sentences, addressing the user by their chosen name: that `~/ITGuy/machine.md` is everything the IT guy remembers, theirs to read or edit anytime — and that his memory lives at that fixed place, so both triggers work from any session in any folder, with no need to be in a particular directory.
+
+   Mention a starting folder **only if this session began somewhere other than the home folder**, and then only as a mild preference: a fresh session started in the home folder avoids reaching outside a project tree for every scan. Never present it as a requirement — it is not one, and telling a non-technical user they started in the "wrong place" when everything worked is exactly the kind of needless friction this plugin exists to remove.
 
 ## Errors
 
