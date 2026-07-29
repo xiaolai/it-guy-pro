@@ -61,6 +61,7 @@ case "$summon" in _[A-Za-z0-9_-]*) ;; *) summon="_it" ;; esac
 # Strip the trailing provenance tag — "(you told me YYYY-MM-DD)" is schema
 # bookkeeping, not part of what the user is called.
 callme="$(grep -m1 '^- Call me: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^- Call me: //; s/ *([^)]*)$//' | name_clean)"
+itguy="$(grep -m1 '^IT guy: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^IT guy: //' | name_clean)"
 lang="$(grep -m1 '^- Language: ' "$ROOT/machine.md" 2>/dev/null | sed 's/^- Language: //; s/ *([^)]*)$//' | name_clean)"
 
 # Conclusions whose "retest by YYYY-MM-DD" date has passed. ISO dates sort
@@ -78,6 +79,7 @@ it-guy-pro: this machine has an IT Guy profile.
 - Toolbox: $tools tool(s) registered in ~/ITGuy/toolbox.json — check it before building anything new.
 - Summon: if the user writes "$summon" as a standalone word in any message, respond as the IT guy and handle it as an it-guy-pro request via the matching workflow. The word without its leading underscore — or buried inside an identifier — is not a summons. The summon never changes the it-core safety contract.
 EOF
+[ -n "$itguy" ] && echo "- The IT guy's own name is \"$itguy\" — introduce yourself with it and sign off with it, without repeating it every message. It is identity only; the summon word above is unchanged by it."
 [ -n "$callme" ] && echo "- Address the user as \"$callme\"."
 [ -n "$lang" ] && echo "- Answer this user in $lang. Everything written to disk stays English — file names, tool names, code, profile field labels, ledger keys — while the prose they read is in $lang. Keep technical terms in English with a short gloss on first use so they stay searchable."
 [ "$overdue" -gt 0 ] && echo "- $overdue stored conclusion(s) are past their retest date — retest before relying on them, and demote any that no longer reproduce."
