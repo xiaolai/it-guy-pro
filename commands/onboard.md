@@ -1,7 +1,7 @@
 ---
 name: onboard
 description: "First visit — the IT guy observes the machine, asks exactly one question (your name), and proposes next steps from evidence"
-allowed-tools: Read, Write, Bash, Glob, Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Bash, Glob, Task, AskUserQuestion
 ---
 
 # Onboard — the IT guy's first visit
@@ -28,7 +28,7 @@ Then ask the one question via AskUserQuestion: **"And you — how should I addre
 
 ## Step 4: Write the profile
 
-Create `~/ITGuy/` with subfolders `toolbox/`, `undo/`, `reports/`. Write `~/ITGuy/machine.md` following the schema exactly:
+Create `~/ITGuy/` with subfolders `toolbox/`, `undo/`, `reports/`, and initialise `~/ITGuy/toolbox.json` as `{"tools": [], "declined": []}` so later commands always have a registry to write to. Write `~/ITGuy/machine.md` following the schema exactly:
 
 - The `Summon: _it` line right under `Updated:` — written explicitly so the user can see it's theirs to change.
 - Hardware/System from diagnostician facts. Never store serial numbers, passwords, IPs, or account emails.
@@ -42,7 +42,11 @@ Create `~/ITGuy/` with subfolders `toolbox/`, `undo/`, `reports/`. Write `~/ITGu
 First the evidence, then the offers — reactions, not questions:
 
 1. **"What I noticed" table**: Observation | Status (🟢🟡🔴) | plain-language meaning. Only observations backed by the scan, with real numbers.
-2. **Exactly three offers**, ranked, each tied to one concrete observation and phrased as a yes/no offer ("Want me to keep that Desktop tidy automatically?"). A missing or stale backup is always offer #1 when found — stated plainly: "You have no backup. If this Mac died tonight, those photos are gone. Shall we fix that first?" Draw the rest from `/it-guy-pro:cleanup`, `/it-guy-pro:organize`, or an `/it-guy-pro:automate` idea derived from the observed pileups.
+2. **Exactly three offers**, ranked, each tied to one concrete observation and phrased as a yes/no offer ("Want me to keep that Desktop tidy automatically?").
+
+   **At most one of the three may be an automation**, and it is always ranked below any health finding — see the per-command table in `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/references/pattern-catalogue.md`, whose rules bind here. Run its signals (including the 30-day recency companions), skip anything already in the registry's `tools` or `declined`, and use its offer wording so the user's own number is in the sentence. If the user declines it, create `~/ITGuy/toolbox.json` as `{"tools": [], "declined": []}` if absent and append the pattern id — an onboarding decline is as permanent as any other, and failing to record it is why a first visit's rejected suggestion comes back at the next checkup.
+
+   A missing or stale backup is always offer #1 when found — stated plainly: "You have no backup. If this Mac died tonight, those photos are gone. Shall we fix that first?" Draw the rest from `/it-guy-pro:cleanup`, `/it-guy-pro:organize`, or an `/it-guy-pro:automate` idea derived from the observed pileups.
 3. Close with two sentences, addressing the user by their chosen name: the summon reminder (`_it` from anywhere, any conversation), and that `~/ITGuy/machine.md` is everything the IT guy remembers — theirs to read or edit anytime.
 
 ## Errors

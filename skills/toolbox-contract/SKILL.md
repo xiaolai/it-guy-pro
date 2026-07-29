@@ -1,11 +1,19 @@
 ---
 name: toolbox-contract
-description: The micro-product contract for the IT Guy toolbox — acceptance criteria, directory layout, README template, registry schema, dry-run requirement, double-clickable wrappers, and the evolution ladder. Load when building, listing, running, evolving, or removing tools in ~/ITGuy/toolbox/.
+description: The micro-product contract for the IT Guy toolbox — acceptance criteria, directory layout, README template, registry schema, dry-run requirement, double-clickable wrappers, the evolution ladder, and the pattern catalogue used to offer a user automations they did not know to ask for. Load when building, listing, running, evolving, or removing tools in ~/ITGuy/toolbox/, or when deciding whether to suggest one.
 ---
 
 # Toolbox Contract
 
 Every automation the IT guy builds is left behind as a named tool the user owns. Over months the user accumulates a portfolio of personal micro-products without ever "learning programming".
+
+## Two ways a tool gets built
+
+**The user asks** (`/it-guy-pro:automate`) — they describe a chore and it becomes a tool.
+
+**The IT guy notices** — a measurable pattern on their machine matches a proven recipe, and he offers it with their own number in the sentence. This is the path that matters for non-technical users, because **nobody asks for an automation they don't know exists.** The signals, thresholds, offers, recipes, and the anti-nagging rules that keep it from becoming a pitch list all live in `references/pattern-catalogue.md`. Read that file before making any unsolicited suggestion, and obey its rules: one offer per run, health findings outrank convenience, quote the observed number, and a decline is permanent.
+
+Both paths produce the same thing, and both must pass the test below.
 
 ## Acceptance test — all three, or don't build it
 
@@ -75,17 +83,23 @@ Mark it executable (`chmod +x`). The wrapper always runs the preview, never `--g
   "tools": [
     {
       "name": "rename-photos-by-date",
+      "pattern": "camera-named-photos",
       "purpose": "Renames photos to YYYY-MM-DD-<original>.jpg using the date each photo was taken",
       "built": "2026-07-29",
       "last_used": "2026-07-29",
       "runs": 1,
       "stage": "script"
     }
-  ]
+  ],
+  "declined": ["desktop-screenshots"]
 }
 ```
 
 `stage` is one of `script` | `cli` | `scheduled`. Update `last_used` and `runs` on every run.
+
+`pattern` is the catalogue id this tool was built from, or absent for a tool the user requested directly. **It is what marks a pattern as handled** — the tool's own `name` cannot serve that purpose, because `/automate` lets users name tools whatever they like, so a user who calls it `tidy-my-desktop-shots` would otherwise be offered `desktop-screenshots` forever. Always set it when building from a catalogue recipe.
+
+`declined` holds catalogue **ids** the user has turned down — the backticked code such as `desktop-screenshots`, never the recipe name such as `file-desktop-screenshots`; the two differ by a word and a decline recorded under the wrong one is a decline no reader will ever match. **A decline is permanent** — never raise that pattern again. Remove the entry only if the user later asks for that tool themselves. If `toolbox.json` is absent, create it as `{"tools": [], "declined": []}`; an absent `declined` key means nothing has been declined yet.
 
 ## Evolution ladder
 

@@ -22,9 +22,13 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` and `${CLAUDE_PLUGIN_ROOT}/
 
 The toolbox contract's three criteria: real problem, repeat use, evolvable. A one-off task fails the test — do it directly instead (with the same safety rules), tell the user why no tool was built, log the visit, done.
 
-## Step 3: Check the toolbox
+## Step 3: Check the toolbox, then the catalogue
 
 Read `~/ITGuy/toolbox.json`. An existing tool covers the chore → show its README and how to run it, bump nothing, done. A near-miss exists → offer evolving it instead of duplicating.
+
+Then check `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/references/pattern-catalogue.md`: if the described chore matches a catalogue pattern, **build that recipe rather than improvising one.** The catalogue entries carry gotchas learned the expensive way — keeping originals when converting HEIC, labelling a fallback date as a fallback, confirming duplicates by checksum before trusting a filename. Improvising past them reinvents the bugs.
+
+If the chore matched a pattern that sits in `declined`, remove it from that array — the user asking for it directly overrides an earlier decline.
 
 ## Step 4: Build
 

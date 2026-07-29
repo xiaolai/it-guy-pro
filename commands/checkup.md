@@ -2,14 +2,14 @@
 name: checkup
 description: "Full health report — disk, memory, startup items, updates, backups, battery — in plain language"
 argument-hint: "[--html]"
-allowed-tools: Read, Write, Bash, Glob, Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Bash, Glob, Task, AskUserQuestion
 ---
 
 # Checkup — the regular health visit
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contract and report format are binding. Read `~/ITGuy/machine.md` if it exists (compare today's findings against its Watch List). If `uname` is not `Darwin`, say this version supports Mac only and stop.
 
-This command is read-only: it diagnoses and recommends, it changes nothing.
+**This command changes nothing about the user's system** — it diagnoses and recommends only. It does write its own bookkeeping: the visit log, the machine profile, and a declined pattern id if an automation offer is turned down. Those writes are required, not exceptions to skip.
 
 ## Step 1: Gather evidence
 
@@ -24,6 +24,20 @@ Rules:
 - Every startup item is named in plain language ("Google's software updater"), never just its plist filename.
 - Backup findings distinguish "no backup configured" (🔴) from "backup disk not connected today" (🟡).
 - A diagnostic that could not run appears as 🟡 "couldn't check" with the one-sentence reason — never silently dropped.
+
+## Step 2b: One automation offer — only when the machine has earned it
+
+Read `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/references/pattern-catalogue.md` and run its signals. Its rules are binding, and three of them decide whether you say anything at all:
+
+- **Skip this step entirely if any 🔴 finding is open.** A full disk or a missing backup outranks any convenience, and raising both at once buries the one that matters.
+- **Skip any pattern already in `declined` or already built** in `~/ITGuy/toolbox.json`.
+- **At most one offer**, the highest count among those that fired, appended as a single line below the recommended next step — never a list, never a second section.
+
+Phrase it with their own number: "Separately — I noticed 213 screenshots piled up on your Desktop. Want me to build you something that files those automatically?"
+
+If they decline, append the **pattern id** (the backticked code, not the recipe name) to `declined` in `~/ITGuy/toolbox.json`, **creating the file as `{"tools": [], "declined": []}` if it does not exist** — on a machine where `/it-guy-pro:automate` has never run there is no registry yet, and a decline that lands nowhere comes back next checkup. If they accept, hand off to the `automate` workflow using the catalogue's recipe, and set the new tool's `pattern` field so the offer never repeats.
+
+If no pattern fires, or a 🔴 is open, say nothing here. Silence is the correct output most of the time.
 
 ## Step 3: If `--html` was passed (or the user asks for a keepable copy)
 

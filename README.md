@@ -54,6 +54,8 @@ The leading underscore is the trigger; the everyday word "it" never summons him,
 
 **3. Tools you keep.** When a chore repeats, the IT guy doesn't just do it — he builds it into a small named tool under `~/ITGuy/toolbox/`, with a plain-language README and a double-clickable preview. Six months in, you own a personal collection of automations, whether or not you ever learn to program.
 
+And he offers them before you know to ask. Nobody requests an automation they don't know exists, so a checkup measures your machine and, when something has clearly become a chore, makes exactly one offer using your own number: *"I noticed 213 screenshots piled up on your Desktop — want me to file those automatically from now on?"* One offer at a time, never while something more important is broken, and a "no" is remembered permanently.
+
 ## What's in the box
 
 ```
@@ -63,7 +65,8 @@ it-guy-pro/
 ├── skills/
 │   ├── it-core/         the 10-rule safety contract, report formats, state layout
 │   ├── machine-profile/ profile schema, visit log, undo manifests
-│   ├── toolbox-contract/ the micro-product contract and evolution ladder
+│   ├── toolbox-contract/ the micro-product contract, evolution ladder, and the
+│   │                     pattern catalogue that offers tools you didn't ask for
 │   ├── macos-recipes/   exact diagnostic/action commands with their gotchas
 │   ├── home-network/    layer isolation, Wi-Fi tuning ladder, router buying,
 │                        connecting machines, security baseline

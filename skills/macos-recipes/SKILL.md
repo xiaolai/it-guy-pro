@@ -46,7 +46,7 @@ Exact commands, expected output shape, and gotchas. Use these verbatim rather th
 
 ### Behavioral observation (for onboarding)
 - Desktop items: `ls ~/Desktop 2>/dev/null | wc -l`
-- Screenshot pileup (English and Chinese naming): `find ~/Desktop -maxdepth 1 \( -name "Screenshot*" -o -name "Screen Shot*" -o -name "SCREENSHOT*" -o -name "SCREENCAP*" \) 2>/dev/null | wc -l`
+- Screenshot pileup (English and Chinese naming): `find ~/Desktop -maxdepth 1 -type f \( -iname "screenshot*" -o -iname "screen shot*" -o -name "SCREENSHOT*" -o -name "SCREENCAP*" \) 2>/dev/null | wc -l` — use `-iname` and `-type f` so this matches the pattern-catalogue signal exactly; two commands reporting different counts for the same thing is how a user gets quoted a number that contradicts itself
 - Downloads size and count: `du -sh ~/Downloads 2>/dev/null` and `ls ~/Downloads 2>/dev/null | wc -l`
 - Stale downloads: `find ~/Downloads -maxdepth 1 -atime +90 2>/dev/null | wc -l`
 - Dominant file types: `find ~/Documents ~/Desktop ~/Downloads -maxdepth 2 -type f 2>/dev/null | awk -F. 'NF>1 {print tolower($NF)}' | sort | uniq -c | sort -rn | head -8`
@@ -72,9 +72,13 @@ osascript -e 'on run argv' -e 'set p to POSIX file (item 1 of argv)' \
 
 ### HEIC → JPG
 ```bash
-sips -s format jpeg "photo.heic" --out "photo.jpg"
+out="${f%.*}.jpg"; n=2
+while [ -e "$out" ]; do out="${f%.*} ($n).jpg"; n=$((n+1)); done
+sips -s format jpeg "$f" --out "$out"
 ```
-Original is kept; converted copy goes next to it or to a folder the user picked.
+Original is kept; the converted copy goes next to it or to a folder the user picked.
+
+⚠️ **`sips --out` overwrites an existing file silently and exits 0** — the collision loop above is not optional. Cameras that save `IMG_1234.HEIC` beside `IMG_1234.JPG`, and any second run of the same conversion, will destroy real data without it.
 
 ### Photo date taken (for date-based renaming)
 - `mdls -name kMDItemContentCreationDate -raw "photo.jpg"` — Spotlight metadata, works for most photos.
