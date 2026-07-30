@@ -32,7 +32,7 @@ If the chore matched a pattern that sits in `declined`, remove it from that arra
 
 ## Step 4: Build
 
-Dispatch the `it-guy-pro:toolsmith` agent (via Task) with the spec. It builds under `~/ITGuy/toolbox/<name>/` per the contract (dry-run default, Trash-only, README, `.command` wrapper), tests the dry-run against the real target, and registers the tool.
+Dispatch the `mac-it-guy-pro:toolsmith` agent (via Task) with the spec. It builds under `~/ITGuy/toolbox/<name>/` per the contract (dry-run default, Trash-only, README, `.command` wrapper), tests the dry-run against the real target, and registers the tool.
 
 ## Step 5: Hand over the keys
 

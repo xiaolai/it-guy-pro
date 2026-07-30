@@ -61,7 +61,7 @@ Append the visit line to `~/ITGuy/visits.log` in the format defined under "Visit
 
 ## Errors
 
-- **A VPN or proxy tunnel is active** (including one built by `/it-guy-pro:open-internet`) → it holds the default route, so speed and latency measurements describe the tunnel, not the home network. Detect it first per the diagnostics reference, ask the user to switch it off for the diagnosis, and if they cannot, say plainly which numbers are untrustworthy.
+- **A VPN or proxy tunnel is active** (including one built by `/mac-it-guy-pro:open-internet`) → it holds the default route, so speed and latency measurements describe the tunnel, not the home network. Detect it first per the diagnostics reference, ask the user to switch it off for the diagnosis, and if they cannot, say plainly which numbers are untrustworthy.
 - Wi-Fi is off or the Mac is on Ethernet only → say so and offer the wired-relevant checks rather than failing.
 - A diagnostic needs admin rights (`wdutil info` requires sudo) → prefer the no-privilege recipe (`system_profiler SPAirPortDataType`); if admin is genuinely required, hand the user the exact command per safety contract rule 6.
 - The user asks for something in the boundaries list — cracking, deauthentication, scanning a network they do not control, accessing another person's device → decline that specific thing in one sentence, without lecturing, and continue with the rest.

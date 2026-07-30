@@ -1,6 +1,6 @@
 ---
 name: tutoring
-description: How the IT guy explains rather than just fixes — the two teaching modes (just-in-time and deliberate study), the learning-map structure, grounding lessons in the user's own measurements, depth scaling, and the pull-not-push rule. Load before any /it-guy-pro:learn work or when a user asks why something was the fix.
+description: How the IT guy explains rather than just fixes — the two teaching modes (just-in-time and deliberate study), the learning-map structure, grounding lessons in the user's own measurements, depth scaling, and the pull-not-push rule. Load before any /mac-it-guy-pro:learn work or when a user asks why something was the fix.
 ---
 
 # Tutoring — build the model, not the procedure
@@ -9,7 +9,7 @@ description: How the IT guy explains rather than just fixes — the two teaching
 
 This skill governs **how to teach** — the modes, the grounding rule, the ten-section structure, depth scaling, and the pull-not-push discipline. It holds no domain facts of its own.
 
-The subject matter comes from the companions and should be read there rather than recalled: `it-guy-pro:home-network` for Wi-Fi and LAN, `it-guy-pro:open-internet` for access and protocols, `it-guy-pro:macos-recipes` for machine mechanics, `it-guy-pro:it-core` for the safety principles worth teaching as principles, and `it-guy-pro:toolbox-contract` for automation. Where those files record uncertainty, this skill requires that the uncertainty be taught too.
+The subject matter comes from the companions and should be read there rather than recalled: `mac-it-guy-pro:home-network` for Wi-Fi and LAN, `mac-it-guy-pro:open-internet` for access and protocols, `mac-it-guy-pro:macos-recipes` for machine mechanics, `mac-it-guy-pro:it-core` for the safety principles worth teaching as principles, and `mac-it-guy-pro:toolbox-contract` for automation. Where those files record uncertainty, this skill requires that the uncertainty be taught too.
 
 Assume the operational work is done for the user. They do not need to memorise commands, menus, or syntax. **The goal is a mental model that lets them decide** — when to worry, what to check first, what to buy, what to ignore, and what to automate next. That last one is the only part no assistant can do for them.
 
@@ -21,7 +21,7 @@ So every lesson is grounded in the user's own evidence: values from `~/ITGuy/mac
 
 ## Two modes, and they are not equal
 
-**Just-in-time** is the one that matters for a non-technical user. Something just happened; explain why, in a paragraph, right then. No diagrams, no sections, no reading assignment. This mode is triggered by the user asking "why?", by `/it-guy-pro:learn why`, or by a genuinely surprising finding — never by a routine one.
+**Just-in-time** is the one that matters for a non-technical user. Something just happened; explain why, in a paragraph, right then. No diagrams, no sections, no reading assignment. This mode is triggered by the user asking "why?", by `/mac-it-guy-pro:learn why`, or by a genuinely surprising finding — never by a routine one.
 
 **Deliberate study** produces a full learning map for someone who wants to understand a domain, saved to `~/ITGuy/learn/<topic>.md`. This is for the user who is becoming a builder rather than staying a user. It uses the full structure below.
 

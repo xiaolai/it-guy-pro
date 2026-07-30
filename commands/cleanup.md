@@ -10,7 +10,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contra
 
 ## Step 1: Scan (changes nothing)
 
-Record free space now (`df -h /`). Dispatch the `it-guy-pro:janitor` agent (via Task) in **scan mode** across all its categories: app caches, old downloads, large stale files, duplicates, developer leftovers, Trash size.
+Record free space now (`df -h /`). Dispatch the `mac-it-guy-pro:janitor` agent (via Task) in **scan mode** across all its categories: app caches, old downloads, large stale files, duplicates, developer leftovers, Trash size.
 
 ## Step 2: Present findings and let the user choose
 

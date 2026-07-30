@@ -21,7 +21,7 @@ FUTURE = (date.today() + timedelta(days=90)).isoformat()
 
 PROFILE = f"""# This Machine
 
-Updated: {TODAY} by /it-guy-pro:checkup
+Updated: {TODAY} by /mac-it-guy-pro:checkup
 Summon: _it
 
 ## Owner

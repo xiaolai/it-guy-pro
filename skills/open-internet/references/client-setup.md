@@ -48,7 +48,7 @@ If the user's goal involves a service that geo-restricts by policy rather than c
 Show the user three things and confirm they can do the first two themselves:
 
 1. **On and off** — where the switch is, and that turning it off is safe and occasionally necessary: domestic banking apps, Alipay and WeChat Pay, and real-name verification flows can refuse to run when the traffic appears to come from abroad.
-2. **What a blocked server feels like** — everything foreign stops, everything domestic still works. That specific pattern means the server IP, not their Wi-Fi. The fix is `/it-guy-pro:open-internet fix`.
+2. **What a blocked server feels like** — everything foreign stops, everything domestic still works. That specific pattern means the server IP, not their Wi-Fi. The fix is `/mac-it-guy-pro:open-internet fix`.
 3. **The renewal date**, and that a lapsed VPS means losing the IP and rebuilding.
 
 Record in `~/ITGuy/machine.md`: that a private connection exists, the provider, the region, the renewal date, and the client app. **Never** the share link, UUID, keys, or passwords.

@@ -51,7 +51,7 @@ Deleting is forbidden because it destroys the ability to explain a past decision
 ```markdown
 # This Machine
 
-Updated: YYYY-MM-DD by /it-guy-pro:<command>
+Updated: YYYY-MM-DD by /mac-it-guy-pro:<command>
 Summon: _it
 IT guy: <his name, or omit the line entirely>
 
@@ -129,7 +129,7 @@ So a `- Call me:` line whose *value* is written in the user's own script is corr
 
 ## The `Language` line
 
-`- Language: <language>` is how the user wants to be **answered** — reports, explanations, offers, and the prose of learning maps. It is a told-class fact: set at onboarding, changed only by `/it-guy-pro:profile update`, never inferred over the top of what they chose.
+`- Language: <language>` is how the user wants to be **answered** — reports, explanations, offers, and the prose of learning maps. It is a told-class fact: set at onboarding, changed only by `/mac-it-guy-pro:profile update`, never inferred over the top of what they chose.
 
 When the line is absent, match the language the user is writing in. When it is present, it wins even if they type in another language, because a person may write a command in English and still want the explanation in their own language.
 
@@ -137,7 +137,7 @@ Technical terms stay in English with a short gloss in the user's language on fir
 
 ## The `IT guy` line
 
-What the user calls him. Set at onboarding, changed only by `/it-guy-pro:profile update`, and the line is omitted entirely when the user declines a name — an unnamed IT guy works identically.
+What the user calls him. Set at onboarding, changed only by `/mac-it-guy-pro:profile update`, and the line is omitted entirely when the user declines a name — an unnamed IT guy works identically.
 
 **A name creates a second summon.** `IT guy: Alan` means `_alan` reaches him just as `_it` does, and both ignore capitalisation. The digest derives it from the first word of the name, ASCII-lowercased with spaces and punctuation dropped, so `Mary-Jane O'Brien` yields `_mary-jane`.
 
@@ -149,11 +149,11 @@ When he has a name he introduces himself with it and signs off with it; he does 
 
 ## The `Summon` and `Call me` lines
 
-`Summon: _it` is the word that calls the IT guy from any session; a different word must keep the leading underscore. The `Summon: ` prefix matters — the SessionStart digest greps for it. `- Call me:` in Owner is how the user is addressed. Both change only via `/it-guy-pro:profile update`.
+`Summon: _it` is the word that calls the IT guy from any session; a different word must keep the leading underscore. The `Summon: ` prefix matters — the SessionStart digest greps for it. `- Call me:` in Owner is how the user is addressed. Both change only via `/mac-it-guy-pro:profile update`.
 
 ## The `Private Connection` section
 
-Written only by `/it-guy-pro:open-internet`; omit entirely when no server exists. `Status` is what other commands branch on: `working` means verified on the date in `Last verified`, `blocked` means diagnosed and unfixed, `needs setup` means started but unfinished. **A `working` status older than 60 days is stale, not evidence** — re-verify before relying on it.
+Written only by `/mac-it-guy-pro:open-internet`; omit entirely when no server exists. `Status` is what other commands branch on: `working` means verified on the date in `Last verified`, `blocked` means diagnosed and unfixed, `needs setup` means started but unfinished. **A `working` status older than 60 days is stale, not evidence** — re-verify before relying on it.
 
 **Never record here or anywhere in `~/ITGuy/`:** the share link, UUID, keys, shortId, server password, or SSH key.
 

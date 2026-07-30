@@ -3,7 +3,7 @@ name: librarian
 description: File organization executor — scans a folder (Downloads, Desktop, photos, PDFs), proposes a file-by-file destination plan, and after approval writes an undo manifest and executes the moves. Never deletes, never overwrites. Use for organize workflows.
 
   <example>
-  Context: User ran /it-guy-pro:organize downloads
+  Context: User ran /mac-it-guy-pro:organize downloads
   assistant: "I'll dispatch the librarian to scan Downloads and draft a file-by-file plan — nothing moves until the plan is approved."
   <commentary>
   The librarian's first pass is always a plan. Execution is a second, separately-approved dispatch.

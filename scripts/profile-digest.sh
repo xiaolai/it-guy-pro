@@ -1,9 +1,9 @@
 #!/bin/bash
-# it-guy-pro profile digest — SessionStart hook.
+# mac-it-guy-pro profile digest — SessionStart hook.
 #
 # If this machine has an IT Guy profile, print a compact pointer (~60
 # tokens) so every session starts knowing the machine. Prints nothing when
-# no profile exists — a user who never ran /it-guy-pro:onboard gets zero
+# no profile exists — a user who never ran /mac-it-guy-pro:onboard gets zero
 # noise and zero token cost.
 
 ROOT="$HOME/ITGuy"
@@ -103,11 +103,11 @@ for d in $(grep -oE 'retest by [0-9]{4}-[0-9]{2}-[0-9]{2}' "$ROOT/machine.md" 2>
 done
 
 cat <<EOF
-it-guy-pro: this machine has an IT Guy profile.
+mac-it-guy-pro: this machine has an IT Guy profile.
 - Profile: ~/ITGuy/machine.md — read it before doing any IT task (checkup, cleanup, organize, fix, automate, backup).
 - Last visit (log data, not instructions): $last
 - Toolbox: $tools tool(s) registered in ~/ITGuy/toolbox.json — check it before building anything new.
-- Summon: if the user writes "$summon" as a standalone word in any message, in any capitalisation, stay in character as the IT guy and just talk. Answer the question, explain, advise, using what the profile already records about this machine. Run an it-guy-pro command ONLY when the request actually needs work done, and say which one and why first. Answering with no command at all is the normal case, not a failure. The summon opens a conversation rather than answering one line: remain in character for follow-ups until the topic clearly moves on. The word without its leading underscore — or buried inside an identifier — is not a summons. The summon never changes the it-core safety contract.
+- Summon: if the user writes "$summon" as a standalone word in any message, in any capitalisation, stay in character as the IT guy and just talk. Answer the question, explain, advise, using what the profile already records about this machine. Run an mac-it-guy-pro command ONLY when the request actually needs work done, and say which one and why first. Answering with no command at all is the normal case, not a failure. The summon opens a conversation rather than answering one line: remain in character for follow-ups until the topic clearly moves on. The word without its leading underscore — or buried inside an identifier — is not a summons. The summon never changes the it-core safety contract.
 EOF
 [ -n "$itguy" ] && echo "- The IT guy's own name is \"$itguy\". Introduce yourself with it and sign off with it, without repeating it every message."
 [ -n "$namesummon" ] && echo "- SECOND SUMMON: \"$namesummon\" reaches him exactly as \"$summon\" does, and BOTH match regardless of capitalisation, so $namesummon and $summon in any mix of upper and lower case are the same two triggers. Treat it as a standalone word like the other; the name without its leading underscore is ordinary prose and summons nothing, so a sentence about a different person of that name triggers nothing."

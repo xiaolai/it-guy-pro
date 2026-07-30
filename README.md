@@ -1,15 +1,15 @@
-# it-guy-pro
+# mac-it-guy-pro
 
 **Your personal IT guy — he remembers your computer and leaves his tools behind.**
 
 A Claude Code plugin for people who are *not* programmers. It turns Claude into a professional, careful IT person who checks your computer's health, cleans up safely, organizes your files, fixes problems (diagnosis first, always), sets up real backups — and every time it solves a repeated chore, it builds you a small tool you keep forever.
 
-macOS only.
+macOS only — see [Why macOS only](#why-macos-only) below.
 
 ## Install
 
 ```bash
-claude plugin install it-guy-pro@xiaolai
+claude plugin install mac-it-guy-pro@xiaolai
 ```
 
 ### Where to start it from
@@ -21,7 +21,7 @@ Nothing breaks if you start somewhere else. His memory lives at a fixed location
 Then start with:
 
 ```
-/it-guy-pro:onboard
+/mac-it-guy-pro:onboard
 ```
 
 The IT guy looks over your machine — he doesn't quiz you, since the Desktop and Downloads folder tell him more than a questionnaire would. He asks one short round of questions (what to call him, what to call you, which language to answer in), then writes down what he observed in a file you can read: `~/ITGuy/machine.md`.
@@ -53,28 +53,28 @@ From any Claude session — any project, any topic — typing `_it` as a standal
 _it my mac feels slow
 ```
 
-The leading underscore is the trigger; the everyday word "it" never summons him, and neither does `_it` buried inside code like `_item`. Prefer a different word? Edit the `Summon:` line in `~/ITGuy/machine.md` (keep the underscore) or ask via `/it-guy-pro:profile update`. The slash commands always work regardless.
+The leading underscore is the trigger; the everyday word "it" never summons him, and neither does `_it` buried inside code like `_item`. Prefer a different word? Edit the `Summon:` line in `~/ITGuy/machine.md` (keep the underscore) or ask via `/mac-it-guy-pro:profile update`. The slash commands always work regardless.
 
 ## Commands
 
 | Command | What it does |
 |---------|--------------|
-| `/it-guy-pro:onboard` | First visit — observes the machine, asks one short round of questions, proposes 3 next steps from evidence |
-| `/it-guy-pro:checkup` | Full health report: disk, memory, startup items, updates, backups, battery. Changes nothing on your Mac; it does update its own notes. Add `--html` for a keepable report |
-| `/it-guy-pro:cleanup` | Reclaim disk space — scan first, you approve categories, everything goes to the Trash (never deleted outright) |
-| `/it-guy-pro:organize` | Sort Downloads, Desktop, photos (by date), or PDFs (by content). Every run writes an undo manifest — `organize undo` reverses it |
-| `/it-guy-pro:fix "it's slow"` | Describe any problem in your own words — evidence-based diagnosis first, then clearly-explained options |
-| `/it-guy-pro:automate "the chore"` | Describe a repetitive chore — get a reusable tool in your toolbox, with a double-clickable preview |
-| `/it-guy-pro:toolbox` | List, run, evolve, or remove the tools built for you |
-| `/it-guy-pro:backup` | "If this Mac died tonight, what would you lose?" — audit, setup, and a real restore drill |
-| `/it-guy-pro:network` | Fix slow Wi-Fi, connect your machines to each other, see what's on your network, secure it, and get honest advice on whether a new router would help at all |
-| `/it-guy-pro:open-internet` | Build and maintain your own private server for unrestricted access — buy it, configure it, connect, and fix it when it's blocked |
-| `/it-guy-pro:learn` | Understand what just happened, or study a whole topic — built from your machine's real numbers, not a generic tutorial |
-| `/it-guy-pro:profile` | Show or edit everything the IT guy remembers about this machine |
+| `/mac-it-guy-pro:onboard` | First visit — observes the machine, asks one short round of questions, proposes 3 next steps from evidence |
+| `/mac-it-guy-pro:checkup` | Full health report: disk, memory, startup items, updates, backups, battery. Changes nothing on your Mac; it does update its own notes. Add `--html` for a keepable report |
+| `/mac-it-guy-pro:cleanup` | Reclaim disk space — scan first, you approve categories, everything goes to the Trash (never deleted outright) |
+| `/mac-it-guy-pro:organize` | Sort Downloads, Desktop, photos (by date), or PDFs (by content). Every run writes an undo manifest — `organize undo` reverses it |
+| `/mac-it-guy-pro:fix "it's slow"` | Describe any problem in your own words — evidence-based diagnosis first, then clearly-explained options |
+| `/mac-it-guy-pro:automate "the chore"` | Describe a repetitive chore — get a reusable tool in your toolbox, with a double-clickable preview |
+| `/mac-it-guy-pro:toolbox` | List, run, evolve, or remove the tools built for you |
+| `/mac-it-guy-pro:backup` | "If this Mac died tonight, what would you lose?" — audit, setup, and a real restore drill |
+| `/mac-it-guy-pro:network` | Fix slow Wi-Fi, connect your machines to each other, see what's on your network, secure it, and get honest advice on whether a new router would help at all |
+| `/mac-it-guy-pro:open-internet` | Build and maintain your own private server for unrestricted access — buy it, configure it, connect, and fix it when it's blocked |
+| `/mac-it-guy-pro:learn` | Understand what just happened, or study a whole topic — built from your machine's real numbers, not a generic tutorial |
+| `/mac-it-guy-pro:profile` | Show or edit everything the IT guy remembers about this machine |
 
 ## He explains, not just fixes
 
-Ask `/it-guy-pro:learn why` after anything and get the reasoning in a paragraph, grounded in the numbers actually measured on your Mac — not a generic article. Ask for a topic (`/it-guy-pro:learn wifi`) and get a full learning map saved to `~/ITGuy/learn/`: what it is, why it exists, when to think of it, the decisions it drives, and what you don't yet know to ask.
+Ask `/mac-it-guy-pro:learn why` after anything and get the reasoning in a paragraph, grounded in the numbers actually measured on your Mac — not a generic article. Ask for a topic (`/mac-it-guy-pro:learn wifi`) and get a full learning map saved to `~/ITGuy/learn/`: what it is, why it exists, when to think of it, the decisions it drives, and what you don't yet know to ask.
 
 The maps date the half that expires. Prices, standards and app recommendations carry a review-by date; principles like *find the failing layer before spending money* don't — because knowing which of your beliefs have expiry dates is most of what expertise is.
 
@@ -82,7 +82,7 @@ The maps date the half that expires. Prices, standards and app recommendations c
 
 At setup the IT guy asks which language to answer you in, and everything you read follows it — reports, explanations, learning maps. Everything written to disk stays English by design: file names, tool names, code, and the profile's field labels, so nothing breaks and your tools stay portable. Technical terms keep their English name alongside a short gloss in your language, so you can still search for them later.
 
-Change it anytime with `/it-guy-pro:profile update`.
+Change it anytime with `/mac-it-guy-pro:profile update`.
 
 ## The three things that make it trustworthy
 
@@ -99,7 +99,7 @@ And he offers them before you know to ask. Nobody requests an automation they do
 ## What's in the box
 
 ```
-it-guy-pro/
+mac-it-guy-pro/
 ├── commands/            12 slash commands (above)
 ├── agents/              diagnostician (read-only), janitor, librarian, toolsmith
 ├── skills/
@@ -110,10 +110,8 @@ it-guy-pro/
 │   ├── tutoring/        teaching modes, the learning-map structure, and the
 │   │                     rule that lessons are offered rather than inserted
 │   ├── macos-recipes/   exact diagnostic/action commands with their gotchas
-│   ├── home-network/    layer isolation, Wi-Fi tuning ladder, router buying,
+│   └── home-network/    layer isolation, Wi-Fi tuning ladder, router buying,
 │                        connecting machines, security baseline
-│   └── open-internet/   architecture decision, protocol evidence, VPS buying,
-│                        server/client setup, troubleshooting, legal boundaries
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
 ├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh, state.sh
 └── tests/               guard (62), memory (46), state (12), recipes (9)
@@ -124,16 +122,41 @@ it-guy-pro/
 Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **129 assertions, run on every push:**
 
 - **`scripts/guard.sh`** inspects every shell command before it runs — 62 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
-- **`scripts/lint-profile.sh`** audits the IT guy's own memory, with the session digest, across 46 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
+- **`scripts/lint-profile.sh`** audits the IT guy's own memory, with the session digest, across 46 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/mac-it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
 - **`scripts/state.sh`** is the only thing allowed to modify `~/ITGuy/` — 12 test cases. Several Claude sessions can run at once, so it serialises writers with a lock, writes atomically so a crash can never leave a half-written profile, retires a belief from all three files or none of them, and refuses to save a profile the linter would flag. Tested by racing six writers at the registry and asserting nothing is lost.
 - **`tests/recipes_test.py`** binds the prose to the code — 9 test cases. It asserts every documented shell recipe parses, that the guard never blocks a command the plugin tells itself to run, that the published profile schema passes the linter shipped beside it, and that the fields the schema publishes are the fields the session hook actually reads. It also re-checks documented gotchas against the live system, which is how the "Time Machine reports failure by exit code" error was found — it does not; it exits 0 and an agent trusting `$?` would have told you a missing backup was fine.
 
 Run them yourself: `python3 tests/guard_test.py && python3 tests/memory_test.py && python3 tests/state_test.py && python3 tests/recipes_test.py`.
 
+## Works with other AI coding agents
+
+Ships a **Codex CLI** layout alongside the Claude Code one, and the safety rails survive the port — which was the condition for doing it at all. Codex supports `PreToolUse` and `SessionStart` with the same handler shape, so the command guard and the session digest both run there, backed by the same 62 assertions.
+
+| Agent | Support |
+|---|---|
+| **Claude Code** | Full — 12 slash commands, 4 restricted-tool sub-agents, both hooks |
+| **Codex CLI** | Full workflows and skills, both hooks. No sub-agent isolation — the entry skill states what discipline that shifts onto the model |
+| **Grok Build, opencode, Kimi CLI** | Read `codex/AGENTS.md` and the shared skills natively. Whether the guard runs depends on the runtime's hook support — the plugin says so out loud rather than assuming |
+| **Antigravity (`agy`)** | Reads the workspace skills tree; link it with `cc-suite:bridge-skills` |
+
+**The skills are symlinks, not copies**, so both builds read the same files and cannot drift apart. The one honest gap is sub-agent isolation: in Claude Code the read-only diagnostician structurally *cannot* modify anything, which is a property of the harness rather than a promise in prose. Elsewhere that becomes discipline the model must supply, and the entry skill says so explicitly instead of pretending the builds are identical.
+
+## Why macOS only
+
+This is not a gap waiting to be filled. Three layers are genuinely Mac-shaped, and the third is the reason.
+
+**The recipes.** Screenshots are found through Spotlight metadata, which is how they are located regardless of your system language — Linux has no equivalent, so that check would fall back to matching filenames and break on any non-English machine. Backups mean Time Machine. `sips`, `mdls`, `system_profiler`, `launchctl`, `networkQuality` and `tmutil` have no portable substitutes, only rough analogues.
+
+**The concepts.** "Move it to the Trash so you can undo it" is a Finder guarantee. Full Disk Access, TCC permissions, launchd, double-clickable `.command` wrappers — every one is a macOS idea, and several of the safety promises are stated in terms of them.
+
+**The safety layer, which settles it.** The command guard parses each shell command through JXA, which ships with macOS. Without it, 32 of 62 guard cases change verdict. A port would need to rebuild that in another runtime and re-earn every one of those assertions — and a version shipping the commands without a working guard would be more dangerous than no version at all.
+
+So a Linux or Windows edition would share this plugin's philosophy — diagnose before treating, memory that expires by evidence, tools you keep — and almost none of its mechanics. That is a sibling project, not a flag. All twelve commands stop immediately on a non-Mac rather than half-working.
+
 ## Uninstall / data removal
 
-`claude plugin uninstall it-guy-pro@xiaolai` removes the plugin. Your data — profile, logs, and toolbox in `~/ITGuy/` — is yours and stays put; drag it to the Trash if you want it gone. The tools in `~/ITGuy/toolbox/` keep working without the plugin: they're ordinary scripts.
+`claude plugin uninstall mac-it-guy-pro@xiaolai` removes the plugin. Your data — profile, logs, and toolbox in `~/ITGuy/` — is yours and stays put; drag it to the Trash if you want it gone. The tools in `~/ITGuy/toolbox/` keep working without the plugin: they're ordinary scripts.
 
 ## Notes for technical users
 

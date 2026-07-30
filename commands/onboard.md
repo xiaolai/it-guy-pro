@@ -18,7 +18,7 @@ If `~/ITGuy/machine.md` exists, show its `Updated:` line and use AskUserQuestion
 
 ## Step 2: Observe the machine
 
-Dispatch the `it-guy-pro:diagnostician` agent (via Task) for all six diagnostic areas **plus the behavior area**: Desktop composition and screenshot pileup, Downloads size/age/composition, dominant file types across Documents, Desktop, and Downloads. The behavior evidence is what replaces interview questions — it reveals what the user actually does and which chores are piling up.
+Dispatch the `mac-it-guy-pro:diagnostician` agent (via Task) for all six diagnostic areas **plus the behavior area**: Desktop composition and screenshot pileup, Downloads size/age/composition, dominant file types across Documents, Desktop, and Downloads. The behavior evidence is what replaces interview questions — it reveals what the user actually does and which chores are piling up.
 
 ## Step 3: The one question round — names and language
 
@@ -51,7 +51,7 @@ First the evidence, then the offers — reactions, not questions:
 
    **At most one of the three may be an automation**, and it is always ranked below any health finding — see the per-command table in `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/references/pattern-catalogue.md`, whose rules bind here. Run its signals (including the 30-day recency companions), skip anything already in the registry's `tools` or `declined`, and use its offer wording so the user's own number is in the sentence. If the user declines it, create `~/ITGuy/toolbox.json` as `{"tools": [], "declined": []}` if absent and append the pattern id — an onboarding decline is as permanent as any other, and failing to record it is why a first visit's rejected suggestion comes back at the next checkup.
 
-   A missing or stale backup is always offer #1 when found — stated plainly: "You have no backup. If this Mac died tonight, those photos are gone. Shall we fix that first?" Draw the rest from `/it-guy-pro:cleanup`, `/it-guy-pro:organize`, or an `/it-guy-pro:automate` idea derived from the observed pileups.
+   A missing or stale backup is always offer #1 when found — stated plainly: "You have no backup. If this Mac died tonight, those photos are gone. Shall we fix that first?" Draw the rest from `/mac-it-guy-pro:cleanup`, `/mac-it-guy-pro:organize`, or an `/mac-it-guy-pro:automate` idea derived from the observed pileups.
 3. **Teach the summon — this is the one thing they must retain, so say it plainly and only here.** Show both triggers with the name they actually chose:
 
    > Two ways to reach me from any conversation, on any topic: type **`_it`**, or **`_alan`** — whichever you prefer. Capitalisation doesn't matter, and the underscore is what makes them reliable: `_alan` can't appear by accident, so talking *about* someone named Alan never summons me.

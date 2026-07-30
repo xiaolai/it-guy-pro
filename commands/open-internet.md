@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task, AskUserQuestion, WebSe
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/open-internet/SKILL.md` first — it holds the current protocol recommendation, the decision logic, and the boundaries. Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` for the safety contract and `${CLAUDE_PLUGIN_ROOT}/skills/machine-profile/SKILL.md` for the `Private Connection` schema you will write. Read `~/ITGuy/machine.md` if it exists.
 
-This is the one it-guy-pro workflow that touches a machine other than the user's own. Two rules follow from that:
+This is the one mac-it-guy-pro workflow that touches a machine other than the user's own. Two rules follow from that:
 
 - **The guard hook protects this Mac, not the server.** Nothing stops a destructive command on the far end. Treat every remote command as unguarded: read it before running it, and never run a destructive one on a server that already works.
 - **Server access is root over ssh.** That is normal for a fresh VPS and is not the same as running sudo on the user's Mac.
@@ -73,7 +73,7 @@ Test and show real results: a blocked site loads, the visible IP address is the 
 ### Step 8: Record and hand over
 
 - Write the `Private Connection` section of `~/ITGuy/machine.md` exactly per the schema in the machine-profile skill — `Status: working`, provider/region, architecture, client app, renewal date, and today as `Last verified`. **Never** credentials, keys, UUIDs, or the share link.
-- Tell them the three things they will eventually need: how to turn it on and off, what a blocked server feels like and that `/it-guy-pro:open-internet fix` handles it, and when the bill renews.
+- Tell them the three things they will eventually need: how to turn it on and off, what a blocked server feels like and that `/mac-it-guy-pro:open-internet fix` handles it, and when the bill renews.
 - Append the visit line to `~/ITGuy/visits.log`.
 
 ## check

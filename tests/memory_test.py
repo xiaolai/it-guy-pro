@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Behavioural tests for the it-guy-pro memory model.
+"""Behavioural tests for the mac-it-guy-pro memory model.
 
 Covers the two executable pieces of a model that is otherwise prose:
   * scripts/lint-profile.sh   — schema and safety rules over ~/ITGuy state
@@ -27,7 +27,7 @@ STALE60 = (TODAY - timedelta(days=90)).isoformat()
 
 CLEAN = f"""# This Machine
 
-Updated: {TODAY} by /it-guy-pro:checkup
+Updated: {TODAY} by /mac-it-guy-pro:checkup
 Summon: _it
 
 ## Hardware

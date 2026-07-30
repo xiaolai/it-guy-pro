@@ -1,5 +1,5 @@
 #!/bin/bash
-# it-guy-pro state writer — the ONLY sanctioned path that mutates ~/ITGuy.
+# mac-it-guy-pro state writer — the ONLY sanctioned path that mutates ~/ITGuy.
 #
 # ~/ITGuy is a small database: a schema, cross-file referential integrity
 # (every demoted subject must exist in history.md), a size cap, a uniqueness

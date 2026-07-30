@@ -1,6 +1,6 @@
 # Pattern Catalogue — offering tools the user didn't know to ask for
 
-The gap this closes: **nobody asks for an automation they don't know exists.** `/it-guy-pro:automate` waits to be told about a chore, which works for users who already think in terms of automatable work and fails for everyone else. This catalogue lets the IT guy notice the chore first and offer it, using a number from the user's own machine.
+The gap this closes: **nobody asks for an automation they don't know exists.** `/mac-it-guy-pro:automate` waits to be told about a chore, which works for users who already think in terms of automatable work and fails for everyone else. This catalogue lets the IT guy notice the chore first and offer it, using a number from the user's own machine.
 
 Each pattern has an **id** (recorded on decline), a **signal** (command plus threshold), an **offer** (one sentence containing the real number), and a **recipe** (what to build, and the gotchas). Verified on macOS 29 July 2026.
 
@@ -24,7 +24,7 @@ Binding everywhere. A suggestion engine that ignores them is spam, and a user wh
 3. **Never offer what exists.** Skip a pattern if any registry entry has a matching `pattern` field. Because `/automate` lets users name tools freely, the `pattern` field — not the tool's name — is what marks a pattern as handled; always set it when building from a catalogue recipe.
 4. **When up to three offers are shown at once** (the `toolbox` command's cap), a decline is recorded **only for patterns the user explicitly rejects** — choosing "none of these" declines all shown; picking one records nothing about the others, which stay eligible next time.
 5. **Below threshold means silence.** Thresholds mark where a chore becomes genuinely recurring.
-6. **Recent, not historical.** Every signal below pairs a total count with a 30-day count. **If the 30-day count is zero the chore is not recurring** — it is a one-time tidy-up, so point at `/it-guy-pro:organize` instead and offer no tool.
+6. **Recent, not historical.** Every signal below pairs a total count with a 30-day count. **If the 30-day count is zero the chore is not recurring** — it is a one-time tidy-up, so point at `/mac-it-guy-pro:organize` instead and offer no tool.
 7. **Check for an existing system.** If the destination folders already exist and are organised, someone has a system; offering to automate it is an insult dressed as help. Ask whether they want it faster, or say nothing.
 8. **Profile Conventions win.** Where `~/ITGuy/machine.md` records the user's filing habits, those destinations override the defaults below — same precedence the `librarian` agent uses.
 
@@ -47,7 +47,7 @@ Requires Spotlight indexing. If `mdutil -s /` reports indexing disabled, skip th
 
 **Threshold:** 20 total, and the 30-day count above zero. **Offer:** "I found N screenshots sitting on your Desktop — want me to build something that files them into Pictures by month, so they stop collecting there?"
 
-**Recipe — `file-desktop-screenshots`:** move to `~/Pictures/Screenshots/<YYYY>/<YYYY-MM>/`, matching the `librarian` agent's scheme so the tool and `/it-guy-pro:organize desktop` never fight over the same files. Write an undo manifest first. Dates come from `mdls` — see the two date gotchas below. A strong candidate for the scheduled stage later; this chore recurs daily.
+**Recipe — `file-desktop-screenshots`:** move to `~/Pictures/Screenshots/<YYYY>/<YYYY-MM>/`, matching the `librarian` agent's scheme so the tool and `/mac-it-guy-pro:organize desktop` never fight over the same files. Write an undo manifest first. Dates come from `mdls` — see the two date gotchas below. A strong candidate for the scheduled stage later; this chore recurs daily.
 
 ### `heic-photos`
 
@@ -77,7 +77,7 @@ find ~/Pictures ~/Desktop ~/Downloads -maxdepth 2 -type f \( -iname 'IMG_*.jp*g'
 
 **Threshold:** 50 total, 30-day count above zero. **Offer:** "N of your photos are still named things like IMG_4032, which makes them impossible to find later — want them renamed by the date they were taken?"
 
-**Recipe — `rename-photos-by-date`:** rename in place to `YYYY-MM-DD-<original>.jpg`. Undo manifest first. Never overwrite; append ` (2)` on collision. Renaming in place is deliberate — moving these is `/it-guy-pro:organize photos`, and two tools must not both claim the move.
+**Recipe — `rename-photos-by-date`:** rename in place to `YYYY-MM-DD-<original>.jpg`. Undo manifest first. Never overwrite; append ` (2)` on collision. Renaming in place is deliberate — moving these is `/mac-it-guy-pro:organize photos`, and two tools must not both claim the move.
 
 ### `oversized-images`
 
@@ -110,7 +110,7 @@ find ~/Downloads -mindepth 1 -maxdepth 1 -type f -mtime +90 2>/dev/null | wc -l
 
 **Note the deliberate use of `-mtime`, not `-atime`.** Access time is bumped by Spotlight indexing, backup scans, antivirus, QuickLook and cloud-sync agents, so an `-atime` count is unstable between runs and cannot honestly be described to the user as "files you haven't opened." Do not promise that phrasing.
 
-**Recipe — `file-downloads-by-type`:** sort into `~/Downloads/<Year>/<Installers|Documents|Images|Archives|Media|Other>/`, matching the `librarian` scheme. Undo manifest first. **Never delete** — clearing old downloads is a `/it-guy-pro:cleanup` decision the user makes explicitly.
+**Recipe — `file-downloads-by-type`:** sort into `~/Downloads/<Year>/<Installers|Documents|Images|Archives|Media|Other>/`, matching the `librarian` scheme. Undo manifest first. **Never delete** — clearing old downloads is a `/mac-it-guy-pro:cleanup` decision the user makes explicitly.
 
 ### `duplicate-copies`
 

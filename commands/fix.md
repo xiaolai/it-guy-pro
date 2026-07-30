@@ -15,7 +15,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contra
 
 ## Step 2: Gather evidence
 
-Dispatch the `it-guy-pro:diagnostician` agent (via Task) scoped to the areas the symptom implicates (slowness → memory, CPU, disk, startup; noise/heat → CPU, battery; space → disk). Cross-check its findings against the profile's Live Conclusions.
+Dispatch the `mac-it-guy-pro:diagnostician` agent (via Task) scoped to the areas the symptom implicates (slowness → memory, CPU, disk, startup; noise/heat → CPU, battery; space → disk). Cross-check its findings against the profile's Live Conclusions.
 
 ## Step 3: Present the diagnosis
 

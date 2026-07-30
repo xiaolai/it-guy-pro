@@ -1,6 +1,6 @@
 ---
 name: open-internet
-description: Decision logic for building a personal unrestricted-internet connection from a censored network — which architecture to use (CDN-fronted vs direct), which protocols work and which are detectable, and the boundaries of what to help with. Load before any /it-guy-pro:open-internet work.
+description: Decision logic for building a personal unrestricted-internet connection from a censored network — which architecture to use (CDN-fronted vs direct), which protocols work and which are detectable, and the boundaries of what to help with. Load before any /mac-it-guy-pro:open-internet work.
 ---
 
 # Open Internet — what to build and why

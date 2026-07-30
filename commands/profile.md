@@ -7,7 +7,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, AskUserQuestion
 
 # Profile — auditable memory
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/machine-profile/SKILL.md` first — schema and update rules are binding. If `uname` is not `Darwin`, say this version supports Mac only and stop. If `~/ITGuy/machine.md` does not exist, say there is no profile yet and point to `/it-guy-pro:onboard` — then stop.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/machine-profile/SKILL.md` first — schema and update rules are binding. If `uname` is not `Darwin`, say this version supports Mac only and stop. If `~/ITGuy/machine.md` does not exist, say there is no profile yet and point to `/mac-it-guy-pro:onboard` — then stop.
 
 Resolve the subcommand from `$ARGUMENTS`; empty means `show`.
 
@@ -57,7 +57,7 @@ Print `~/ITGuy/history.md` newest-first — what the IT guy used to believe and 
 
 ## forget
 
-Confirm with AskUserQuestion, listing exactly what will be forgotten: the profile, the visit history, the belief history (`history.md` and `ledger.jsonl`), or everything in `~/ITGuy` except the toolbox (tools are the user's property and are only removed via `/it-guy-pro:toolbox remove`). On yes: move the chosen files to the Trash (never rm — recoverable until the user empties it). Say what was forgotten and that the Trash holds the copies.
+Confirm with AskUserQuestion, listing exactly what will be forgotten: the profile, the visit history, the belief history (`history.md` and `ledger.jsonl`), or everything in `~/ITGuy` except the toolbox (tools are the user's property and are only removed via `/mac-it-guy-pro:toolbox remove`). On yes: move the chosen files to the Trash (never rm — recoverable until the user empties it). Say what was forgotten and that the Trash holds the copies.
 
 `forget` is the **only** path that destroys memory. Everything else demotes to `history.md`, because deleting a belief destroys the ability to explain a past decision. The single exception is data that should never have been stored — a password, an address, a serial number — which is removed from the profile *and* from history, with a `redacted` ledger event that records that it happened without repeating the value.
 

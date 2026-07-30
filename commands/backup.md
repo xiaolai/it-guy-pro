@@ -10,7 +10,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contra
 
 ## Step 1: Audit what exists
 
-Dispatch the `it-guy-pro:diagnostician` agent (via Task) for the backup area, plus these direct read-only checks:
+Dispatch the `mac-it-guy-pro:diagnostician` agent (via Task) for the backup area, plus these direct read-only checks:
 
 - Time Machine: destination configured? latest backup date? (distinguish "no backup" from "backup disk not connected" — recipes in `macos-recipes`)
 - iCloud Drive: `ls ~/Library/Mobile\ Documents/com~apple~CloudDocs 2>/dev/null` — present and syncing Desktop/Documents, or not

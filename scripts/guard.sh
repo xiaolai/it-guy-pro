@@ -1,5 +1,5 @@
 #!/bin/bash
-# it-guy-pro guard — PreToolUse hook for the Bash tool.
+# mac-it-guy-pro guard — PreToolUse hook for the Bash tool.
 #
 # Defense-in-depth for non-technical users: blocks catastrophic or
 # irreversible shell commands regardless of the session's permission mode
@@ -84,13 +84,13 @@ hitu() { printf '%s' "$unq" | grep -qE "$1"; }
 newlines="$(printf '%s' "$cmd" | tr -dc '\n' | wc -c | tr -d ' ')"
 
 deny() {
-  echo "it-guy-pro guard: $1" >&2
+  echo "mac-it-guy-pro guard: $1" >&2
   exit 2
 }
 
 ask() {
   # Escape for embedding in JSON.
-  reason="$(printf '%s' "it-guy-pro guard: $1" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  reason="$(printf '%s' "mac-it-guy-pro guard: $1" | sed 's/\\/\\\\/g; s/"/\\"/g')"
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"%s"}}\n' "$reason"
   exit 0
 }
@@ -193,11 +193,11 @@ if hitn "$PROT"; then
   # Destruction is an outcome, not a verb. Truncation and unlink leave no
   # Trash copy at all, so they are stricter than rm, not looser.
   hitu '(^|[^a-zA-Z0-9_])(truncate|unlink)[[:space:]]' && hitn '(truncate|unlink)' && deny \
-    "That erases user content without leaving a Trash copy. Move it to the Trash instead — see the argv-form osascript recipe in the it-guy-pro macos-recipes skill."
+    "That erases user content without leaving a Trash copy. Move it to the Trash instead — see the argv-form osascript recipe in the mac-it-guy-pro macos-recipes skill."
   hitn '(^|[^>])>[[:space:]]*(~|/Users/[^/[:space:]]+)/(Documents|Desktop|Downloads|Pictures|Movies|Music|Library|ITGuy)' && deny \
     "Redirecting over a file truncates it with no Trash copy and no undo. Write to a new name, or move the old file to the Trash first."
   hitu '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
-    "Never rm user content. Move it to the Trash instead so the user can undo — use the argv-form osascript Trash recipe in the it-guy-pro macos-recipes skill."
+    "Never rm user content. Move it to the Trash instead so the user can undo — use the argv-form osascript Trash recipe in the mac-it-guy-pro macos-recipes skill."
   hitu '(^|[^a-zA-Z0-9_])find[[:space:]]' && hitu '[[:space:]]-delete([[:space:]]|$)' && deny \
     "Never mass-delete user content with find. List the candidates, show them to the user, then move approved items to the Trash."
   hitu 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && deny \

@@ -13,7 +13,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contra
 
 ## Step 1: Gather evidence
 
-Dispatch the `it-guy-pro:diagnostician` agent (via Task) for all six areas: disk, memory & CPU, startup, updates, backups, hardware.
+Dispatch the `mac-it-guy-pro:diagnostician` agent (via Task) for all six areas: disk, memory & CPU, startup, updates, backups, hardware.
 
 ## Step 2: Render the report
 
@@ -35,7 +35,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/toolbox-contract/SKILL.md` and then its `refe
 
 Phrase it with their own number: "Separately — I noticed 213 screenshots piled up on your Desktop. Want me to build you something that files those automatically?"
 
-If they decline, append the **pattern id** (the backticked code, not the recipe name) to `declined` in `~/ITGuy/toolbox.json`, **creating the file as `{"tools": [], "declined": []}` if it does not exist** — on a machine where `/it-guy-pro:automate` has never run there is no registry yet, and a decline that lands nowhere comes back next checkup. If they accept, hand off to the `automate` workflow using the catalogue's recipe, and set the new tool's `pattern` field so the offer never repeats.
+If they decline, append the **pattern id** (the backticked code, not the recipe name) to `declined` in `~/ITGuy/toolbox.json`, **creating the file as `{"tools": [], "declined": []}` if it does not exist** — on a machine where `/mac-it-guy-pro:automate` has never run there is no registry yet, and a decline that lands nowhere comes back next checkup. If they accept, hand off to the `automate` workflow using the catalogue's recipe, and set the new tool's `pattern` field so the offer never repeats.
 
 If no pattern fires, or a 🔴 is open, say nothing here. Silence is the correct output most of the time.
 
@@ -67,7 +67,7 @@ Keep this to a few lines of output at most. The health report is the deliverable
 ## Step 4: Update memory
 
 - `~/ITGuy/machine.md` exists → refresh Hardware/System facts in place (new `Updated:` date), resolve or extend Watch List entries this checkup confirms or clears.
-- No profile → append a line to the report: running `/it-guy-pro:onboard` lets the IT guy remember this machine between visits.
+- No profile → append a line to the report: running `/mac-it-guy-pro:onboard` lets the IT guy remember this machine between visits.
 - Append the visit line to `~/ITGuy/visits.log` (create `~/ITGuy/` if missing).
 
 ## Errors

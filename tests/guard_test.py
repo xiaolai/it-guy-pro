@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Behavioral test suite for it-guy-pro guard.sh (PreToolUse hook)."""
+"""Behavioral test suite for mac-it-guy-pro guard.sh (PreToolUse hook)."""
 import json
 import subprocess
 import sys

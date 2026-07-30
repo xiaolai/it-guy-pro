@@ -43,7 +43,7 @@ Run it twice: once idle, once while a large download runs. The gap between the t
 
 ## Isolating the layer
 
-**Check for an active tunnel before anything else.** If a VPN or proxy tunnel holds the default route, every measurement below describes the tunnel rather than the home network — the "router" ping lands on a tunnel endpoint and the speed test measures a server in another country. This plugin ships `/it-guy-pro:open-internet`, which creates exactly such a tunnel, so the case is common rather than exotic:
+**Check for an active tunnel before anything else.** If a VPN or proxy tunnel holds the default route, every measurement below describes the tunnel rather than the home network — the "router" ping lands on a tunnel endpoint and the speed test measures a server in another country. This plugin ships `/mac-it-guy-pro:open-internet`, which creates exactly such a tunnel, so the case is common rather than exotic:
 
 ```bash
 route -n get default 2>/dev/null | awk '/interface/{print $2}'   # utun*/ppp*/ipsec* means a tunnel

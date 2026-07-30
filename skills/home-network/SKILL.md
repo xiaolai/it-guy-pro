@@ -1,6 +1,6 @@
 ---
 name: home-network
-description: Decision logic for home network work — isolating whether a problem is the device, the Wi-Fi, the router, or the ISP before spending money; the fix ladder from free to hardware; router and mesh buying judgement; and the boundaries of whose network may be touched. Load before any /it-guy-pro:network work.
+description: Decision logic for home network work — isolating whether a problem is the device, the Wi-Fi, the router, or the ISP before spending money; the fix ladder from free to hardware; router and mesh buying judgement; and the boundaries of whose network may be touched. Load before any /mac-it-guy-pro:network work.
 ---
 
 # Home Network — find the layer before spending money

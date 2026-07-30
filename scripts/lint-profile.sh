@@ -1,5 +1,5 @@
 #!/bin/bash
-# it-guy-pro profile linter — mechanical half of /it-guy-pro:profile review.
+# mac-it-guy-pro profile linter — mechanical half of /mac-it-guy-pro:profile review.
 #
 # Checks ~/ITGuy state against the machine-profile schema. Everything here
 # is a rule that was previously prose-only, meaning nothing enforced it.
@@ -35,7 +35,7 @@ findings() { c=$(wc -c < "$COUNT" | tr -d ' '); echo $((c - 1)); }
 
 say() { printf '%s|%s|%s|%s\n' "$1" "$2" "$3" "$4"; bump; }
 
-[ -f "$PROFILE" ] || { echo "INFO|no-profile|$PROFILE|No profile yet — run /it-guy-pro:onboard"; rm -f "$COUNT" "$TMPOUT"; exit 2; }
+[ -f "$PROFILE" ] || { echo "INFO|no-profile|$PROFILE|No profile yet — run /mac-it-guy-pro:onboard"; rm -f "$COUNT" "$TMPOUT"; exit 2; }
 # Unverifiable is not the same as fine. Without this the awk passes fail, the
 # comparisons error, and the script exits 0 on a profile it never read.
 [ -r "$PROFILE" ] || { echo "ERROR|unreadable|machine.md|Profile exists but cannot be read, so nothing below was actually checked"; rm -f "$COUNT" "$TMPOUT"; exit 1; }

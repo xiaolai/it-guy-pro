@@ -4,7 +4,7 @@ Written July 2026 for Xray-core on Debian 12 / Ubuntu 24.04. **Verify the instal
 
 ## Rules that override convenience
 
-1. **The it-guy-pro guard protects the user's Mac, not this server.** Nothing blocks a destructive command on the far end. Read every remote command before running it, and never run a destructive one against a server that currently works.
+1. **The mac-it-guy-pro guard protects the user's Mac, not this server.** Nothing blocks a destructive command on the far end. Read every remote command before running it, and never run a destructive one against a server that currently works.
 2. **Show, then run.** One plain sentence per command before it executes. The user is watching their money get spent; let them see what it buys.
 3. **Never paste an unread script into a root shell.** Fetch it, show where it came from, then run the file you fetched. The guard will force a confirmation on `curl | bash` and `bash <(curl …)` — that prompt is correct; do not work around it.
 4. **No panels.** 3x-ui and similar web panels are popular and wrong for a single user: they add an internet-facing admin surface with its own vulnerability history, and an exposed panel port is itself a signal. One config file is less to defend.

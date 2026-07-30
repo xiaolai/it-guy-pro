@@ -23,11 +23,11 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/it-core/SKILL.md` first — the safety contra
 
 ## Modes: downloads / desktop / photos / pdfs
 
-1. **Plan**: dispatch the `it-guy-pro:librarian` agent (via Task) in plan mode for the chosen scope. Its destination schemes are defined in the agent; profile Conventions override them.
+1. **Plan**: dispatch the `mac-it-guy-pro:librarian` agent (via Task) in plan mode for the chosen scope. Its destination schemes are defined in the agent; profile Conventions override them.
 2. **Show the plan**: file-by-file table (first 20 + exact total), plus what will be skipped and why. State clearly: nothing has moved yet.
 3. **Approve**: AskUserQuestion — proceed as planned, adjust (take their changes, re-render the plan once), or cancel.
 4. **Execute**: dispatch the librarian in execute mode with the approved plan. It writes the undo manifest before the first move.
-5. **Report**: destinations table, count moved, the undo manifest path, and the one-line undo instruction (`/it-guy-pro:organize undo`).
+5. **Report**: destinations table, count moved, the undo manifest path, and the one-line undo instruction (`/mac-it-guy-pro:organize undo`).
 
 ## Step: memory
 

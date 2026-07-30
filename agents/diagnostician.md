@@ -3,7 +3,7 @@ name: diagnostician
 description: Read-only evidence gatherer for IT tasks — runs the macOS diagnostic recipes (disk, memory, startup items, updates, backups, battery, SMART) and returns structured findings. Never changes anything. Use for checkups and for diagnosing user-described problems before any fix.
 
   <example>
-  Context: User ran /it-guy-pro:checkup
+  Context: User ran /mac-it-guy-pro:checkup
   assistant: "I'll dispatch the diagnostician to gather disk, memory, startup, update, and backup evidence, then render the report."
   <commentary>
   The checkup command delegates all evidence gathering to this read-only agent and keeps report rendering in the main conversation.

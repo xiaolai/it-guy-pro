@@ -11,7 +11,7 @@ Exact commands, expected output shape, and gotchas. Use these verbatim rather th
 
 This skill covers **command mechanics only** — what to run, what the output means, and where each command lies or fails silently. It deliberately holds no policy.
 
-Read the companions for the rules that govern using these commands: `it-guy-pro:it-core` for the safety contract (Trash instead of delete, dry-run first, undo manifests, admin work handed to the user), `it-guy-pro:machine-profile` for what may be written down afterwards, and `it-guy-pro:toolbox-contract` for turning a recipe into a tool the user keeps. Network measurement lives in `it-guy-pro:home-network`, not here.
+Read the companions for the rules that govern using these commands: `mac-it-guy-pro:it-core` for the safety contract (Trash instead of delete, dry-run first, undo manifests, admin work handed to the user), `mac-it-guy-pro:machine-profile` for what may be written down afterwards, and `mac-it-guy-pro:toolbox-contract` for turning a recipe into a tool the user keeps. Network measurement lives in `mac-it-guy-pro:home-network`, not here.
 
 A recipe in this file is never authority to run it — the contract decides that.
 

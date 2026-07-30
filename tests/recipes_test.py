@@ -131,13 +131,13 @@ def t_plugin_root_references_resolve():
 
 @case
 def t_declared_commands_and_skills_exist():
-    """it-guy-pro:<name> must resolve to a real command, agent or skill"""
+    """mac-it-guy-pro:<name> must resolve to a real command, agent or skill"""
     names = {p.stem for p in (ROOT / "commands").glob("*.md")}
     names |= {p.stem for p in (ROOT / "agents").glob("*.md")}
     names |= {p.parent.name for p in ROOT.glob("skills/*/SKILL.md")}
     missing = set()
     for p in MD:
-        for ref in re.findall(r"it-guy-pro:([a-z][a-z0-9-]*)", p.read_text()):
+        for ref in re.findall(r"mac-it-guy-pro:([a-z][a-z0-9-]*)", p.read_text()):
             if ref not in names:
                 missing.add(ref)
     assert not missing, f"references to things that do not exist: {sorted(missing)}"

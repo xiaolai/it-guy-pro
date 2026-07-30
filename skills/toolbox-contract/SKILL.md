@@ -9,7 +9,7 @@ Every automation the IT guy builds is left behind as a named tool the user owns.
 
 ## Two ways a tool gets built
 
-**The user asks** (`/it-guy-pro:automate`) — they describe a chore and it becomes a tool.
+**The user asks** (`/mac-it-guy-pro:automate`) — they describe a chore and it becomes a tool.
 
 **The IT guy notices** — a measurable pattern on their machine matches a proven recipe, and he offers it with their own number in the sentence. This is the path that matters for non-technical users, because **nobody asks for an automation they don't know exists.** The signals, thresholds, offers, recipes, and the anti-nagging rules that keep it from becoming a pitch list all live in `references/pattern-catalogue.md`. Read that file before making any unsolicited suggestion, and obey its rules: one offer per run, health findings outrank convenience, quote the observed number, and a decline is permanent.
 
@@ -116,4 +116,4 @@ Mark it executable (`chmod +x`). The wrapper always runs the preview, never `--g
 | cli | user says "do this every day/week" | add a launchd LaunchAgent (recipe in `macos-recipes`), log to `~/ITGuy/toolbox/<name>/runs.log` |
 | scheduled | — | terminal stage in v0.1 |
 
-When a run of `/it-guy-pro:toolbox` notices a trigger condition, offer the upgrade — never apply it unasked.
+When a run of `/mac-it-guy-pro:toolbox` notices a trigger condition, offer the upgrade — never apply it unasked.

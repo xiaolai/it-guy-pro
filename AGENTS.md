@@ -1,6 +1,6 @@
 # Working conventions for this repo
 
-Shared by Claude, Codex, and any other agent working on it-guy-pro.
+Shared by Claude, Codex, and any other agent working on mac-it-guy-pro.
 
 ## Privacy discipline when testing against a real machine
 

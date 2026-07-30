@@ -66,7 +66,7 @@ dns-sd -B _ipp._tcp local.       # is the printer advertising at all?
 
 - Advertising but not connecting → the Mac and printer are probably on **different bands or a guest network that blocks client-to-client traffic.** This is the most common cause and it looks like a driver problem.
 - Not advertising → the printer is offline, on a different network, or old enough to need its address entered manually.
-- **Prefer AirPrint over manufacturer drivers.** Vendor printer software is a common source of background processes and login items — the same ones the startup audit in `/it-guy-pro:checkup` will flag later.
+- **Prefer AirPrint over manufacturer drivers.** Vendor printer software is a common source of background processes and login items — the same ones the startup audit in `/mac-it-guy-pro:checkup` will flag later.
 
 ## Wake-on-LAN
 
