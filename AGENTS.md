@@ -60,7 +60,18 @@ python3 tests/guard_test.py && python3 tests/memory_test.py \
   && python3 tests/state_test.py && python3 tests/recipes_test.py
 ```
 
-CI runs these on `macos-latest` on every push. It must be macOS: `guard.sh` parses its payload with JXA, and without it 32 of 59 guard cases change verdict, so a Linux runner would report green for a guard that never ran as shipped.
+CI runs these on `macos-latest` on every push. It must be macOS: `guard.sh` parses
+its payload with JXA. Without it the guard runs its fallback instead of the
+shipped path — 4 of 53 case-table verdicts change, all toward over-blocking —
+so a Linux runner would report green for code no user ever executes.
+
+The fallback's direction is a load-bearing property, not an incidental one. It
+claimed to over-block for three versions while doing the opposite: the prose
+carve-out strips quoted spans, and in the raw JSON payload the entire command
+sits inside a quoted value, so every rule using that copy matched nothing.
+`t_payload_parse_failure_over_blocks_rather_than_under_blocks` pins it. Any
+change to extraction or to the carve-out must keep that test honest — a guard
+may fail loud, never quiet.
 
 ## Releasing
 

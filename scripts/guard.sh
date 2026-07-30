@@ -28,12 +28,22 @@
 # the it-core contract (untrusted-data rules), the indirection "ask"
 # tiers below, and Claude Code's own permission system.
 
+# Pathname expansion is never wanted here. The target-extraction loops below
+# iterate over an unquoted word split, so a target of `/*` was expanded by the
+# shell against the real filesystem before it could be inspected — the guard
+# examined whatever happened to be in `/` instead of the literal target it was
+# handed. No rule in this file globs on purpose.
+set -f
+
 payload="$(cat)"
 
 # --- Extract tool_input.command precisely via JXA (ships on every Mac). ---
-# Falls back to the raw payload on non-macOS or on parse failure, which
-# widens matching to the description field — safe direction (over-blocking).
+# Falls back to the raw payload on non-macOS or on parse failure. That is
+# meant to widen matching to the description field and over-block, and
+# `parsed` below is what makes it actually do so — see the note on the
+# quoted-span carve-out.
 cmd=""
+parsed=1
 if command -v osascript >/dev/null 2>&1; then
   cmd="$(printf '%s' "$payload" | osascript -l JavaScript -e '
     ObjC.import("Foundation");
@@ -43,7 +53,13 @@ if command -v osascript >/dev/null 2>&1; then
     try { var p = JSON.parse(str); out = (p.tool_input && p.tool_input.command) || ""; } catch (e) {}
     out' 2>/dev/null)"
 fi
-[ -n "$cmd" ] || cmd="$payload"
+# On the fallback, JSON's own quotes sit exactly where these regexes expect a
+# word boundary: the payload renders `find … -delete` as `-delete","description`
+# so `-delete([[:space:]]|$)` never matched, and `xargs rm` likewise. Turning
+# the structural quotes into spaces restores the boundaries without dropping
+# any word. Deliberately not `tr -d` — deleting them would fuse adjacent
+# tokens into one and lose boundaries the other way.
+[ -n "$cmd" ] || { parsed=0; cmd="$(printf '%s' "$payload" | tr '"' ' ')"; }
 
 # Normalized copy, used ONLY for protected-path matching.
 #
@@ -93,7 +109,18 @@ hitn() { printf '%s' "$norm" | grep -qE "$1"; }
 # and still passes — it contains no destructive verb, so treating its text as
 # code changes nothing about the verdict.
 EXECUTES_QUOTES='(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno)[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*-[a-zA-Z]*[ce]([[:space:]]|$)|(^|[^a-zA-Z0-9_])eval([[:space:]]|$)|do[[:space:]]+shell[[:space:]]+script|(^|[^a-zA-Z0-9_])osascript[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*-e([[:space:]]|$)'
-if printf '%s' "$cmd" | grep -qE "$EXECUTES_QUOTES"; then
+# ...and it must not be applied at all when extraction FAILED.
+#
+# On the fallback path `cmd` is the raw JSON payload, where the whole command
+# lives inside a quoted value — so stripping quoted spans deleted the command
+# itself and every rule using this copy matched nothing. Measured on the case
+# table: 20 of 53 verdicts changed without JXA, and 14 of them moved toward
+# LESS protection (deny -> allow), including rm on Documents, find -delete on
+# Downloads, and tmutil delete. The comment above the extractor claimed the
+# fallback over-blocks; it under-blocked, which is the one direction a guard
+# must never fail in. Skipping the carve-out restores the documented
+# behaviour: no extraction, no prose exemption.
+if [ "$parsed" -eq 0 ] || printf '%s' "$cmd" | grep -qE "$EXECUTES_QUOTES"; then
   unq="$cmd"
 else
   unq="$(printf '%s' "$cmd" | sed -e "s/'[^']*'//g" -e 's/"[^"]*"//g')"
@@ -118,20 +145,23 @@ newlines="$(printf '%s' "$cmd" | tr -dc '\n' | wc -c | tr -d ' ')"
 # So the rules are split by what they actually defend, and the level is the
 # user's to pick:
 #
-#   strict  (default) everything below
-#   data              only what protects irreplaceable things — deletes inside
-#                     user content, the Trash, backups, whole-disk operations.
-#                     System-policy rules (sudo, shutdown, SIP, firmware) and
-#                     every confirmation prompt are skipped. This is the
-#                     setting for a developer who wants their photos defended
-#                     and their toolchain left alone.
+#   data    (default) only what protects irreplaceable things — deletes inside
+#                     user content, the Trash, backups, whole-disk and
+#                     whole-tree destruction. System-policy rules (sudo,
+#                     shutdown, SIP, firmware) and every confirmation prompt
+#                     are skipped.
+#   strict            everything below, including machine policy and prompts.
 #   relaxed           all deny rules, no confirmation prompts.
 #   off               nothing. Documented, not recommended, and the plugin
 #                     says so out loud when it is set.
-LEVEL="${ITGUY_GUARD:-strict}"
-# An unrecognised value means a typo, and a typo must never quietly weaken the
+LEVEL="${ITGUY_GUARD:-data}"
+# An unrecognised value is a typo, and a typo must never quietly weaken the
 # guard: `ITGUY_GUARD=Data` or `=yes` would otherwise have dropped every
-# machine-policy rule without saying anything.
+# machine-policy rule without saying anything. Note this lands on `strict`,
+# which is now STRICTER than the default — deliberately. An unset variable
+# means "I made no choice", and gets the shipped default; a malformed one
+# means "I tried to choose and failed", and gets the loudest setting, so the
+# mistake surfaces immediately instead of silently removing protection.
 case "$LEVEL" in strict|relaxed|data|off) ;; *) LEVEL=strict ;; esac
 data_on()   { [ "$LEVEL" != "off" ]; }
 policy_on() { case "$LEVEL" in strict|relaxed) return 0 ;; *) return 1 ;; esac; }
@@ -139,14 +169,29 @@ ask_on()    { [ "$LEVEL" = "strict" ]; }
 
 data_on || exit 0     # LEVEL=off — nothing below runs.
 
+# Every block names the active level and the way out.
+#
+# Before this, exactly one of the 38 block messages mentioned ITGUY_GUARD at
+# all. The other 37 said "no" and stopped, so a developer whose unrelated work
+# was blocked had no way to learn a dial existed without reading the README —
+# which made an adjustable guard feel like a non-negotiable one. A refusal that
+# hides its own remedy is a worse refusal.
+hint() {
+  case "$LEVEL" in
+    data)    printf ' [guard level: data — this rule protects irreplaceable files. ITGUY_GUARD=off removes the guard entirely.]' ;;
+    strict)  printf ' [guard level: strict, the fullest setting. ITGUY_GUARD=data keeps your files protected while leaving the machine unpoliced and never prompting.]' ;;
+    relaxed) printf ' [guard level: relaxed. ITGUY_GUARD=off removes the guard entirely.]' ;;
+  esac
+}
+
 deny() {
-  echo "mac-it-guy-pro guard: $1" >&2
+  echo "mac-it-guy-pro guard: $1$(hint)" >&2
   exit 2
 }
 
 ask() {
   # Escape for embedding in JSON.
-  reason="$(printf '%s' "mac-it-guy-pro guard: $1" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  reason="$(printf '%s' "mac-it-guy-pro guard: $1$(hint)" | sed 's/\\/\\\\/g; s/"/\\"/g')"
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"%s"}}\n' "$reason"
   exit 0
 }
@@ -243,6 +288,32 @@ fi
 hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(~|/Users/[^/[:space:]]+)/?[[:space:]]*($|;|&)' && deny \
   "That deletes the entire home folder. There is no version of this that is the right fix."
 
+# Wiping the disk, a whole system tree, or everything inside the home folder.
+#
+# Measured gap, not a hypothetical: `rm -rf /` reached only the ASK tier, and
+# ASK is skipped at every level below `strict` — so the most destructive
+# command on the machine was ALLOWED outright at `data` and `relaxed`.
+# `sudo rm -rf /` looked covered, but only incidentally, by the sudo policy
+# rule, which `data` also drops. Deleting one file inside Documents was denied
+# while deleting everything was not, and the rule above stopped `rm -rf ~` but
+# not `rm -rf ~/*`, which destroys exactly the same files.
+#
+# Ungated on purpose: no level except `off` weakens this one.
+#
+# Bare roots only. `/usr/local/share/x` and `/opt/myapp/target` are ordinary
+# paths and stay allowed; `/usr` and `/opt` themselves are not. /System/Volumes/Data
+# is named explicitly because on current macOS it *is* the user's whole disk.
+ROOTS='/(System|Library|Applications|Users|usr|bin|sbin|etc|var|private|opt|Volumes|cores|Network)'
+if hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]'; then
+  wipe_targets="$(printf '%s' "$norm" \
+    | sed -E 's/(^|.*[;&|])[[:space:]]*rm[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//')"
+  for t in $wipe_targets; do
+    case "$t" in -*) continue ;; esac
+    printf '%s' "$t" | grep -qE "^(/|/\*|~/\*|/Users/[^/[:space:]]+/\*|/System/Volumes/Data/?\*?|${ROOTS}/?\*?)$" && deny \
+      "That deletes an entire system or user tree ($t) — every file under it, with no Trash copy. Name the specific folder you mean instead."
+  done
+fi
+
 # ---------- Tier 2: deny rm/find-delete/xargs-rm on user content ----------
 
 if hitn "$PROT"; then
@@ -280,8 +351,12 @@ if hit '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)'; t
     case "$t" in -*) continue ;; esac
     printf '%s' "$t" | grep -qE "(^|/)$ARTIFACT/?$" || unknown=1
   done
-  if [ "$unknown" -ne 0 ] && [ "${ITGUY_GUARD:-strict}" != "relaxed" ]; then
-    ask_on && ask "Recursive delete, which leaves no Trash copy and cannot be undone. Build folders and caches are recognised and pass without asking; this target is not one of them, so confirm it is not real work. Developers who want the ask tier off entirely can set ITGUY_GUARD=relaxed — the deny rules that protect Documents, Desktop, Pictures and backups stay on regardless."
+  # No second level check here: ask_on already means LEVEL=strict, and the
+  # duplicate `!= relaxed` test that used to sit alongside it re-read the raw
+  # environment variable, so it disagreed with the validated LEVEL whenever the
+  # value was a typo.
+  if [ "$unknown" -ne 0 ]; then
+    ask_on && ask "Recursive delete, which leaves no Trash copy and cannot be undone. Build folders and caches are recognised and pass without asking; this target is not one of them, so confirm it is not real work."
   fi
 fi
 

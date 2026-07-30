@@ -114,14 +114,14 @@ mac-it-guy-pro/
 │                        connecting machines, security baseline
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
 ├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh, state.sh
-└── tests/               guard (72), memory (46), state (12), recipes (9)
+└── tests/               guard (77), memory (46), state (12), recipes (9)
 ```
 
 ## Checks that actually run
 
-Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **139 assertions, run on every push:**
+Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **144 assertions, run on every push:**
 
-- **`scripts/guard.sh`** inspects every shell command before it runs — 72 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
+- **`scripts/guard.sh`** inspects every shell command before it runs — 77 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
 - **`scripts/lint-profile.sh`** audits the IT guy's own memory, with the session digest, across 46 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/mac-it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
 - **`scripts/state.sh`** is the only thing allowed to modify `~/ITGuy/` — 12 test cases. Any number of Claude sessions can run at once, so it serialises writers with a lock, writes atomically so a crash can never leave a half-written profile, retires a belief from all three files or none of them, and refuses to save a profile the linter would flag. Tested by racing six writers at the registry and asserting nothing is lost.
@@ -131,7 +131,7 @@ Run them yourself: `python3 tests/guard_test.py && python3 tests/memory_test.py 
 
 ## Works with other AI coding agents
 
-Ships a **Codex CLI** layout alongside the Claude Code one, and the safety rails survive the port — which was the condition for doing it at all. Codex supports `PreToolUse` and `SessionStart` with the same handler shape, so the command guard and the session digest both run there, backed by the same 62 assertions.
+Ships a **Codex CLI** layout alongside the Claude Code one, and the safety rails survive the port — which was the condition for doing it at all. Codex supports `PreToolUse` and `SessionStart` with the same handler shape, so the command guard and the session digest both run there, backed by the same 144 assertions.
 
 | Agent | Support |
 |---|---|
@@ -150,7 +150,7 @@ This is not a gap waiting to be filled. Three layers are genuinely Mac-shaped, a
 
 **The concepts.** "Move it to the Trash so you can undo it" is a Finder guarantee. Full Disk Access, TCC permissions, launchd, double-clickable `.command` wrappers — every one is a macOS idea, and the Trash-undo guarantee, the backup story and the permissions model are each stated in terms of them.
 
-**The safety layer, which settles it.** The command guard parses each shell command through JXA, which ships with macOS. Without it, 32 of 62 guard cases change verdict. A port would need to rebuild that in another runtime and re-earn every one of those assertions — and a version shipping the commands without a working guard would be more dangerous than no version at all.
+**The safety layer, which settles it.** The command guard parses each shell command through JXA, which ships with macOS. Without it the guard falls back to matching the raw payload, and 4 of 53 case-table verdicts change — all of them toward *more* blocking, which is the only direction a guard may degrade in. That fallback is a safety net, not a second implementation: it over-blocks ordinary build commands and cannot tell a command from its description. A port would need to rebuild real extraction in another runtime and re-earn every assertion here, and a version shipping the commands without a working guard would be more dangerous than no version at all.
 
 So a Linux or Windows edition would share this plugin's philosophy — diagnose before treating, memory that expires by evidence, tools you keep — and almost none of its mechanics. That is a sibling project, not a flag. All twelve commands stop immediately on a non-Mac rather than half-working.
 
@@ -176,14 +176,18 @@ This is not a loophole: the protected-path rules run **first**, so `rm -rf ~/Doc
 
 | Level | What it does |
 |---|---|
-| `strict` *(default)* | Everything: file protection, machine policy, confirmation prompts |
-| `data` | **Protects your files, leaves your machine alone.** Deletes inside Documents/Desktop/Pictures, the Trash, backups and whole-disk operations stay blocked. `sudo`, shutdown, SIP, firmware and every prompt are skipped |
+| `data` *(default)* | **Protects your files, leaves your machine alone.** Deletes inside Documents/Desktop/Pictures, the Trash, backups, and whole-disk or whole-tree destruction stay blocked. `sudo`, shutdown, SIP, firmware and every confirmation prompt are skipped |
+| `strict` | Everything: file protection, machine policy, confirmation prompts |
 | `relaxed` | All deny rules, no confirmation prompts |
 | `off` | Nothing. Documented, not recommended |
 
-**`data` is the setting for a developer.** It keeps the rules that defend things you cannot get back and drops the ones that amount to a system-wide command policy — which a Mac-maintenance plugin has no real mandate to impose on your unrelated work.
+**Why `data` is the default.** The rules that defend things you cannot get back are on without being asked for, because the people this plugin is written for cannot audit a shell command and will never discover an environment variable — a safety default that ships off protects only the people who did not need it. But `sudo`, shutdown, SIP and firmware are *machine policy*, and a Mac-maintenance plugin has no standing to impose one across your unrelated work. The boundary is the **asset being affected**, not the syntax of the command.
 
-A typo falls back to `strict`, because a mistyped level must never silently weaken the guard.
+The confirmation prompts are off by default for the same reason: a prompt written in shell asks a question its intended reader cannot evaluate, and a user who is prompted constantly learns to approve without reading. Turn them on with `strict` if you can read them.
+
+A typo falls back to `strict` — stricter than the default, deliberately. Unset means "I made no choice" and gets the shipped default; a malformed value means "I tried to choose and failed" and gets the loudest setting, so the mistake surfaces instead of silently removing protection.
+
+**Every block tells you the level it is running at and how to change it.** No refusal leaves you guessing whether a dial exists.
 
 To remove it entirely, install at project scope rather than user scope, or disable the plugin.
 
@@ -193,9 +197,9 @@ A `PreToolUse` hook sees every Bash command in the session, and the payload carr
 
 That is a real imposition, which is why the levels above exist and why this section is here rather than buried.
 
-- The plugin installs at **user scope**, so the guard applies in every directory, including your own repositories — not just when you are doing IT work. That is deliberate (a destructive command is destructive wherever you type it), but it is why `rm -rf node_modules` asks for confirmation while you are coding. Install at project scope instead if you want it confined.
-- The guard hook applies to every Bash call in sessions where the plugin is enabled. If you're a developer, `rm -rf` of build artifacts will trigger a confirm prompt (recursive deletes outside user-content folders are "ask", not "deny") — install at project scope if that bothers you.
-- The hook parses the tool payload with JXA (`osascript -l JavaScript`), which ships on every Mac — no jq/python dependency. On parse failure it falls back to matching the raw payload, which over-blocks rather than under-blocks.
+- The plugin installs at **user scope**, so the guard applies in every directory, including your own repositories — not just when you are doing IT work. That is deliberate: a destructive command is destructive wherever you type it. Install at project scope instead if you want it confined.
+- At the default `data` level nothing prompts, so ordinary development is untouched unless it deletes inside your documents, desktop, pictures, Trash or backups — or tries to remove a whole system tree. At `strict`, recursive deletes of paths outside user content ask for confirmation, though recognised build output never does.
+- The hook parses the tool payload with JXA (`osascript -l JavaScript`), which ships on every Mac — no jq/python dependency. On parse failure it falls back to matching the raw payload with the prose carve-out disabled, so it over-blocks rather than under-blocks. This is tested: for a while it did the opposite, because the carve-out stripped quoted spans and the whole command lives inside a quoted value in the raw JSON.
 - Threat model: the guard is text matching, not shell simulation. It reliably stops *accidental* destruction and coarse injection outcomes (plus "ask" tiers for indirection: `..` paths, command substitution, pipe-to-shell, eval, interpreters shelling out). A deliberately obfuscated command can evade it — the layered defenses there are the untrusted-data rules in the it-core skill and Claude Code's own permission system.
 
 ## License
