@@ -1,6 +1,6 @@
 {
   "name": "mac-it-guy-pro",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Personal IT guy for non-technical macOS users — remembers your machine, guards every action, explains what it did, and leaves reusable tools behind",
   "author": {
     "name": "xiaolai"
@@ -27,10 +27,14 @@
     "longDescription": "Turns the assistant into a professional, careful IT person for someone who is not a programmer. Checks your Mac's health, reclaims disk space without ever deleting outright, organises files with an undo trail, diagnoses problems from evidence before touching anything, sets up real backups with a restore drill, and fixes home networks by finding the failing layer before you spend money. Everything it learns lives in ~/ITGuy as plain text you can read and edit, and every belief carries a date by which it must be retested. A command guard inspects every shell command before it runs, and a locked, transactional writer is the only thing allowed to modify its memory. macOS only.",
     "developerName": "xiaolai",
     "category": "Productivity",
-    "capabilities": ["Read", "Write", "Execute"],
+    "capabilities": [
+      "Read",
+      "Write",
+      "Execute"
+    ],
     "defaultPrompt": [
       "Give my Mac a checkup.",
-      "Use $mac-it-guy-onboard to look over this machine and set things up.",
+      "Use $mac-it-guy to look over this machine and set things up.",
       "If this Mac died tonight, what would I lose?"
     ],
     "websiteURL": "https://github.com/xiaolai/mac-it-guy-pro"

@@ -62,7 +62,7 @@ All IT Guy state lives in one visible, user-auditable folder:
 
 ## Write state through `state.sh`, never by hand
 
-`~/ITGuy/` is a small database — a schema, cross-file integrity between the profile, `history.md` and `ledger.jsonl`, a size cap, and two append-only logs — and several Claude sessions may be running at once. **Mutate it only through `${CLAUDE_PLUGIN_ROOT}/scripts/state.sh`,** which serialises writers with a lock, writes atomically, and refuses to commit a profile the linter rejects.
+`~/ITGuy/` is a small database — a schema, cross-file integrity between the profile, `history.md` and `ledger.jsonl`, a size cap, and two append-only logs — and any number of Claude sessions may be running at once. **Mutate it only through `${CLAUDE_PLUGIN_ROOT}/scripts/state.sh`,** which serialises writers with a lock, writes atomically, and refuses to commit a profile the linter rejects.
 
 | Need | Call |
 |------|------|

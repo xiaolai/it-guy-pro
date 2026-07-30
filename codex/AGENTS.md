@@ -15,7 +15,7 @@ Entry point: **`$mac-it-guy`**. It loads the binding safety contract, then route
 
 ## macOS only
 
-Every workflow stops if `uname` is not `Darwin`. This is not a portability gap to work around — the recipes depend on Spotlight metadata, Time Machine, `sips`, `mdls`, `launchctl` and `system_profiler`, and several safety promises are stated in terms of the Finder Trash and Full Disk Access. Do not improvise substitutes.
+Every workflow stops if `uname` is not `Darwin`. This is not a portability gap to work around — the recipes depend on Spotlight metadata, Time Machine, `sips`, `mdls`, `launchctl` and `system_profiler`, and the Trash-undo and Full Disk Access promises are stated in terms of macOS itself. Do not improvise substitutes.
 
 ## Skills
 
@@ -40,7 +40,7 @@ Without that isolation you must hold the line yourself: gather evidence without 
 
 ## State
 
-`~/ITGuy/` is a small database with cross-file integrity and two append-only logs, and several sessions may run at once. **`scripts/state.sh` is the only sanctioned writer** — it locks, writes atomically, treats demotion as a three-file transaction, and refuses to commit a profile the linter rejects. Reading directly is fine; writing directly races and skips validation.
+`~/ITGuy/` is a small database with cross-file integrity and two append-only logs, and any number of sessions may run at once. **`scripts/state.sh` is the only sanctioned writer** — it locks, writes atomically, treats demotion as a three-file transaction, and refuses to commit a profile the linter rejects. Reading directly is fine; writing directly races and skips validation.
 
 ## Hooks
 
