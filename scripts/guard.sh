@@ -206,8 +206,28 @@ fi
 
 # ---------- Tier 3: ask (forces a user prompt even when allowlisted) ----------
 
-hit '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)' && ask \
-  "Recursive delete. Outside user-content folders this can be legitimate (build folders, caches), but it cannot be undone — confirm with the user."
+# Regenerable build artefacts. Deleting these is routine developer work and
+# the cost of being wrong is a rebuild, not lost data — so asking about them
+# is friction with no safety benefit, and constant prompts train a user to
+# approve without reading, which is worse than not prompting at all.
+#
+# Safe because the protected-path deny above has ALREADY run: `rm -rf
+# ~/Documents/build` is denied before reaching here, so a directory named
+# `build` only reaches this line when it sits outside user content.
+ARTIFACT='(node_modules|target|build|dist|out|\.next|\.nuxt|\.turbo|\.parcel-cache|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|venv|\.venv|\.tox|\.gradle|Pods|DerivedData|coverage|\.cache|vendor|bin/Debug|bin/Release|obj)'
+
+if hit '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)'; then
+  # Every target must be a known artefact; one unrecognised path re-arms it.
+  targets="$(printf '%s' "$norm" | sed -E 's/(^|.*[;&|])[[:space:]]*rm[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' )"
+  unknown=0
+  for t in $targets; do
+    case "$t" in -*) continue ;; esac
+    printf '%s' "$t" | grep -qE "(^|/)$ARTIFACT/?$" || unknown=1
+  done
+  if [ "$unknown" -ne 0 ] && [ "${ITGUY_GUARD:-strict}" != "relaxed" ]; then
+    ask "Recursive delete, which leaves no Trash copy and cannot be undone. Build folders and caches are recognised and pass without asking; this target is not one of them, so confirm it is not real work. Developers who want the ask tier off entirely can set ITGUY_GUARD=relaxed — the deny rules that protect Documents, Desktop, Pictures and backups stay on regardless."
+  fi
+fi
 
 hit '(^|[^a-zA-Z0-9_])find[[:space:]]' && hit '[[:space:]]-delete([[:space:]]|$)' && ask \
   "find -delete removes every match with no undo — confirm the scope with the user."

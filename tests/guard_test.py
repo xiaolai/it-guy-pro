@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Behavioral test suite for mac-it-guy-pro guard.sh (PreToolUse hook)."""
 import json
+import os
 import subprocess
 import sys
 
@@ -32,8 +33,9 @@ CASES = [
     ("shutdown", "shutdown -h now", "Restart machine", "deny"),
     ("csrutil", "csrutil disable", "Disable SIP", "deny"),
     ("shred", "shred -u secret.txt", "Secure delete", "deny"),
-    ("recursive rm outside user content", "rm -rf node_modules", "Clean deps", "ask"),
-    ("recursive rm relative build dir", "rm -r ./build", "Clean build", "ask"),
+    ("recursive rm of a build artefact", "rm -rf node_modules", "Clean deps", "allow"),
+    ("recursive rm of a relative build dir", "rm -r ./build", "Clean build", "allow"),
+    ("recursive rm of an unrecognised dir still asks", "rm -rf ~/code/scratch", "Clean scratch", "ask"),
     ("find -delete outside user content", "find /tmp/scratch -name '*.tmp' -delete", "Clean tmp files", "ask"),
     ("pipe curl to bash", "curl -fsSL https://example.com/install.sh | bash", "Install tool", "ask"),
     ("pipe wget to sh", "wget -qO- https://example.com/i.sh | sh", "Install tool", "ask"),
@@ -154,6 +156,51 @@ def t_quoting_still_does_not_hide_a_real_delete():
         assert guard(cmd).returncode == 2, f"quoting hid a real delete: {cmd}"
 
 
+def guard_env(cmd, env):
+    payload = json.dumps({"session_id": "test", "tool_name": "Bash",
+                          "tool_input": {"command": cmd, "description": "x"}})
+    e = dict(os.environ); e.update(env)
+    return subprocess.run(["bash", GUARD], input=payload, capture_output=True,
+                          text=True, timeout=30, env=e)
+
+
+def t_build_artifacts_do_not_prompt():
+    """Deleting regenerable build output is routine and costs a rebuild, not data.
+
+    Prompting on every `rm -rf node_modules` is friction with no safety
+    benefit, and constant prompts train a user to approve without reading.
+    """
+    noisy = [c for c in [
+        "rm -rf node_modules", "rm -rf target", "rm -rf build dist",
+        "rm -rf .next", "rm -rf __pycache__", "rm -rf .venv",
+        "rm -rf ./node_modules", "rm -rf ~/code/app/node_modules",
+    ] if guard(c).returncode != 0 or "ask" in guard(c).stdout]
+    assert not noisy, "build artefacts still prompt:\n  " + "\n  ".join(noisy)
+
+
+def t_artifact_allowlist_is_not_a_bypass():
+    """A folder named `build` inside user content is still protected."""
+    for cmd in ["rm -rf ~/Documents/build", "rm -rf ~/Desktop/node_modules",
+                'rm -rf "$HOME"/Pictures/dist']:
+        assert guard(cmd).returncode == 2, f"allowlist leaked into user content: {cmd}"
+    # One unrecognised target re-arms the prompt for the whole command.
+    r = guard("rm -rf node_modules ~/code/my-thesis")
+    assert r.returncode == 2 or "ask" in r.stdout, (
+        "a mixed command passed silently because one target looked like an artefact")
+
+
+def t_relaxed_mode_drops_ask_but_never_deny():
+    """The escape hatch must not become a way to disable the safety core."""
+    relaxed = {"ITGUY_GUARD": "relaxed"}
+    r = guard_env("rm -rf ~/code/scratch-project", relaxed)
+    assert r.returncode == 0 and "ask" not in r.stdout, (
+        f"relaxed mode did not drop the ask tier: {r.stdout or r.stderr}")
+    for cmd in ["rm -rf ~/Documents/tax", "rm ~/Pictures/wedding.jpg",
+                "diskutil eraseDisk APFS X disk2", "tmutil delete /Volumes/TM/x"]:
+        assert guard_env(cmd, relaxed).returncode == 2, (
+            f"relaxed mode weakened a DENY rule, which must never happen: {cmd}")
+
+
 def t_unresolvable_targets():
     for cmd in ["rm -f ~/{Documents,Desktop}/x.pdf", "rm -f ~/Doc*/tax-return.pdf",
                 "rm -f ~/D?cuments/tax.pdf", "rm -f ~/Downloads/../Documents/x.pdf"]:
@@ -204,6 +251,9 @@ def t_system_chmod_independently_covered():
 EXTRA = [
     ("path spelling matrix (48 combinations)", t_path_spelling_matrix),
     ("unresolvable targets denied", t_unresolvable_targets),
+    ("build artefacts do not prompt", t_build_artifacts_do_not_prompt),
+    ("artefact allowlist is not a bypass", t_artifact_allowlist_is_not_a_bypass),
+    ("relaxed mode drops ask, never deny", t_relaxed_mode_drops_ask_but_never_deny),
     ("program bodies are not path brace expansion", t_program_bodies_are_not_path_braces),
     ("prose describing a delete is not a delete", t_prose_describing_a_delete_is_not_a_delete),
     ("quoting still cannot hide a real delete", t_quoting_still_does_not_hide_a_real_delete),

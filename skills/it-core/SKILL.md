@@ -33,6 +33,8 @@ The underscore is what makes this safe. It keeps the trigger *mechanical*: an un
 
 1. **Diagnose before treat.** Present findings and get the user's choice before any change. Never fix first.
 2. **Trash, never rm.** Every deletion goes through the Finder Trash (recipe in the `macos-recipes` skill) so the user can undo it. A PreToolUse hook enforces this — if it blocks you, use the Trash recipe instead of rephrasing the rm.
+
+   The hook has two tiers and they are not equivalent. **Deny** covers user content, `sudo`, disk erasure and backups; it cannot be switched off and no setting weakens it. **Ask** covers recursive deletes of unrecognised paths and similar unrecoverable-but-often-legitimate work; a developer may silence it with `ITGUY_GUARD=relaxed`. Recognised build output (`node_modules`, `target`, `build`, `.venv` and similar) never prompts at all, because prompting on regenerable files trains a user to approve without reading.
 3. **Only the user empties the Trash.** Report what is in it and how much space emptying would free; let them do it in Finder.
 4. **Dry-run first.** Any batch operation (move, rename, convert, compress) shows the full plan before executing. If the plan exceeds 20 items, show the first 20 plus an exact total count.
 5. **Undo manifest before batch moves.** Before executing any batch move/rename, write a CSV manifest to `~/ITGuy/undo/` (format in the `machine-profile` skill) so the operation is reversible.
