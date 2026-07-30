@@ -106,6 +106,39 @@ hitui() { printf '%s' "$unq" | grep -qiE "$1"; }
 # excuse a `sudo` on a completely different line of the same script.
 newlines="$(printf '%s' "$cmd" | tr -dc '\n' | wc -c | tr -d ' ')"
 
+# --- How much of this guard applies (ITGUY_GUARD) --------------------------
+#
+# A PreToolUse hook sees EVERY Bash command in the session and the payload
+# carries no field naming the plugin that issued it, so this guard cannot
+# scope itself to its own workflows even in principle. It is global or it is
+# nothing. That is a real imposition: installing a Mac-maintenance helper
+# should not silently enrol someone's unrelated development work in a
+# system-wide command policy they never chose.
+#
+# So the rules are split by what they actually defend, and the level is the
+# user's to pick:
+#
+#   strict  (default) everything below
+#   data              only what protects irreplaceable things — deletes inside
+#                     user content, the Trash, backups, whole-disk operations.
+#                     System-policy rules (sudo, shutdown, SIP, firmware) and
+#                     every confirmation prompt are skipped. This is the
+#                     setting for a developer who wants their photos defended
+#                     and their toolchain left alone.
+#   relaxed           all deny rules, no confirmation prompts.
+#   off               nothing. Documented, not recommended, and the plugin
+#                     says so out loud when it is set.
+LEVEL="${ITGUY_GUARD:-strict}"
+# An unrecognised value means a typo, and a typo must never quietly weaken the
+# guard: `ITGUY_GUARD=Data` or `=yes` would otherwise have dropped every
+# machine-policy rule without saying anything.
+case "$LEVEL" in strict|relaxed|data|off) ;; *) LEVEL=strict ;; esac
+data_on()   { [ "$LEVEL" != "off" ]; }
+policy_on() { case "$LEVEL" in strict|relaxed) return 0 ;; *) return 1 ;; esac; }
+ask_on()    { [ "$LEVEL" = "strict" ]; }
+
+data_on || exit 0     # LEVEL=off — nothing below runs.
+
 deny() {
   echo "mac-it-guy-pro guard: $1" >&2
   exit 2
@@ -133,11 +166,11 @@ PROT='(~|\$HOME|/Users/[^/[:space:]"'\'']+)/(Documents|Desktop|Downloads|Picture
 # LocalCommand run on THIS machine, so a sudo there is local escalation in
 # an ssh costume.
 if [ "$newlines" -eq 0 ] && hit '^[[:space:]]*ssh[[:space:]]' && ! hiti '(proxycommand|localcommand)'; then
-  hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && ask \
+  ask_on && hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && ask \
     "This runs sudo on the remote server, not on this Mac. Confirm the target host with the user, and remember the guard cannot protect the far end."
 fi
 
-hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && deny \
+policy_on && hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && deny \
   "sudo is never run by the agent. Give the user the exact command to run themselves (tell them to type '! <command>' in the prompt) plus a one-sentence plain-language explanation of what it does."
 
 hit '(^|[^a-zA-Z0-9_./-])dd[[:space:]]' && deny \
@@ -161,16 +194,16 @@ hit ':\(\)[[:space:]]*\{[[:space:]]*:\|:' && deny \
 hit '(chmod|chown)[[:space:]]+-[a-zA-Z]*R' && hit '(/System|/Library|/usr|/bin|/sbin|/etc|/var|[[:space:]]/[[:space:]"'\'']*$|[[:space:]]/$|[[:space:]]~[[:space:]]*$|\$HOME[[:space:]]*$)' && deny \
   "Recursive permission changes on system or home directories break macOS in ways that need a reinstall to fix."
 
-hit 'launchctl[[:space:]]+(bootout[[:space:]]+system|unload[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(/System|/Library/LaunchDaemons))' && deny \
+policy_on && hit 'launchctl[[:space:]]+(bootout[[:space:]]+system|unload[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(/System|/Library/LaunchDaemons))' && deny \
   "Unloading system daemons is out of bounds. For startup items, work only on the user's own LaunchAgents and explain each one first."
 
-hitu '(^|[^a-zA-Z0-9_])csrutil' && deny \
+policy_on && hitu '(^|[^a-zA-Z0-9_])csrutil' && deny \
   "System Integrity Protection stays on. Whatever the goal is, find another way."
 
-hitu '(^|[^a-zA-Z0-9_])nvram[[:space:]]' && deny \
+policy_on && hitu '(^|[^a-zA-Z0-9_])nvram[[:space:]]' && deny \
   "Firmware variables are out of bounds."
 
-hitu '(^|[^a-zA-Z0-9_])(shutdown|reboot|halt)([[:space:]]+(-[a-zA-Z]+|now)|[[:space:]]*$)' && deny \
+policy_on && hitu '(^|[^a-zA-Z0-9_])(shutdown|reboot|halt)([[:space:]]+(-[a-zA-Z]+|now)|[[:space:]]*$)' && deny \
   "Never restart or shut down the user's machine. If a restart is needed, tell the user why and let them do it when they are ready."
 
 hitu 'tmutil[[:space:]]+(delete|disable)' && deny \
@@ -201,7 +234,7 @@ if hitu "$DESTRUCTIVE"; then
     "Brace expansion hides how many targets this really has. Re-run once per explicit path so each one can be checked."
   hitn '(~|/Users/[^/[:space:]]+)/[^/[:space:]]*[*?[][^/[:space:]]*/' && deny \
     "A wildcard in the folder name means the guard cannot tell which folders this hits. Name the folder explicitly."
-  hit '\$\(|`' && ask \
+  ask_on && hit '\$\(|`' && ask \
     "This delete/permission change builds its target indirectly, so the guard cannot verify what it points at. Confirm with the user, or re-run with explicit absolute paths."
 fi
 
@@ -248,41 +281,41 @@ if hit '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)'; t
     printf '%s' "$t" | grep -qE "(^|/)$ARTIFACT/?$" || unknown=1
   done
   if [ "$unknown" -ne 0 ] && [ "${ITGUY_GUARD:-strict}" != "relaxed" ]; then
-    ask "Recursive delete, which leaves no Trash copy and cannot be undone. Build folders and caches are recognised and pass without asking; this target is not one of them, so confirm it is not real work. Developers who want the ask tier off entirely can set ITGUY_GUARD=relaxed — the deny rules that protect Documents, Desktop, Pictures and backups stay on regardless."
+    ask_on && ask "Recursive delete, which leaves no Trash copy and cannot be undone. Build folders and caches are recognised and pass without asking; this target is not one of them, so confirm it is not real work. Developers who want the ask tier off entirely can set ITGUY_GUARD=relaxed — the deny rules that protect Documents, Desktop, Pictures and backups stay on regardless."
   fi
 fi
 
-hit '(^|[^a-zA-Z0-9_])find[[:space:]]' && hit '[[:space:]]-delete([[:space:]]|$)' && ask \
+ask_on && hit '(^|[^a-zA-Z0-9_])find[[:space:]]' && hit '[[:space:]]-delete([[:space:]]|$)' && ask \
   "find -delete removes every match with no undo — confirm the scope with the user."
 
-hit 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && ask \
+ask_on && hit 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && ask \
   "Piping a file list into rm has no undo — confirm the scope with the user."
 
-hit '(curl|wget)[^|;&]*\|[^|]*(ba|z|da|k)?sh([[:space:]]|$)' && ask \
+ask_on && hit '(curl|wget)[^|;&]*\|[^|]*(ba|z|da|k)?sh([[:space:]]|$)' && ask \
   "This pipes an installer from the internet straight into a shell. Download it first, tell the user in one sentence what it installs, then run the reviewed file."
 
-hit '\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|da|k)?sh([[:space:]]|$)' && ask \
+ask_on && hit '\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|da|k)?sh([[:space:]]|$)' && ask \
   "This pipes generated content straight into a shell, so the guard cannot inspect what will actually run. Show the user the content first, or run the steps directly."
 
-hit '<\([[:space:]]*(curl|wget)' && ask \
+ask_on && hit '<\([[:space:]]*(curl|wget)' && ask \
   "This runs a downloaded script through process substitution, which hides the content from inspection just like piping to a shell. Download it first, tell the user what it installs, then run the reviewed file."
 
-hit '(^|[^a-zA-Z0-9_])eval[[:space:]]' && ask \
+ask_on && hit '(^|[^a-zA-Z0-9_])eval[[:space:]]' && ask \
   "eval executes constructed text the guard cannot inspect. Run the steps directly instead, or confirm with the user."
 
-hit 'do[[:space:]]+shell[[:space:]]+script' && ask \
+ask_on && hit 'do[[:space:]]+shell[[:space:]]+script' && ask \
   "AppleScript reaching back into the shell bypasses command inspection. Run the shell part directly so it can be checked."
 
-hit '(python3?|perl|ruby|node)[[:space:]]+(-[a-zA-Z[:space:]]+)*-?-(c|e|eval)[[:space:]]' && hit '(os\.system|subprocess|popen|child_process|execSync|spawnSync)' && ask \
+ask_on && hit '(python3?|perl|ruby|node)[[:space:]]+(-[a-zA-Z[:space:]]+)*-?-(c|e|eval)[[:space:]]' && hit '(os\.system|subprocess|popen|child_process|execSync|spawnSync)' && ask \
   "This inline script shells out from inside an interpreter, which bypasses command inspection. Run the shell command directly, or confirm with the user."
 
-hit 'softwareupdate[[:space:]]+(-[a-zA-Z]*i[a-zA-Z]*|--install)' && ask \
+ask_on && hit 'softwareupdate[[:space:]]+(-[a-zA-Z]*i[a-zA-Z]*|--install)' && ask \
   "System updates can restart the machine and take a long time — the user should explicitly approve this."
 
-hit 'launchctl[[:space:]]+(bootout|unload)[[:space:]]' && ask \
+ask_on && hit 'launchctl[[:space:]]+(bootout|unload)[[:space:]]' && ask \
   "Disabling a startup item. Explain to the user in plain language what this program does before switching it off."
 
-hit '(^|[^a-zA-Z0-9_])defaults[[:space:]]+delete' && ask \
+ask_on && hit '(^|[^a-zA-Z0-9_])defaults[[:space:]]+delete' && ask \
   "This erases an app's entire settings. Confirm with the user, and name the app in plain language."
 
 exit 0

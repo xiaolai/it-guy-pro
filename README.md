@@ -114,14 +114,14 @@ mac-it-guy-pro/
 │                        connecting machines, security baseline
 ├── hooks/hooks.json     PreToolUse guard + SessionStart profile digest
 ├── scripts/             guard.sh, profile-digest.sh, lint-profile.sh, state.sh
-└── tests/               guard (69), memory (46), state (12), recipes (9)
+└── tests/               guard (72), memory (46), state (12), recipes (9)
 ```
 
 ## Checks that actually run
 
-Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **136 assertions, run on every push:**
+Four things in here are enforced by code rather than good intentions, because prose rules drift and nobody notices. **139 assertions, run on every push:**
 
-- **`scripts/guard.sh`** inspects every shell command before it runs — 69 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
+- **`scripts/guard.sh`** inspects every shell command before it runs — 72 test cases covering what it must block, what it must merely ask about, and what it must leave alone.
 - **`scripts/lint-profile.sh`** audits the IT guy's own memory, with the session digest, across 46 test cases. It catches stored secrets (private IPs, MAC addresses, connection UUIDs, share links, passwords) in both the live profile and its history, facts with no provenance, conclusions that can never expire because they carry no retest, overdue retests, and demoted beliefs missing from the history trail. `/mac-it-guy-pro:profile review` runs it, and a stored secret is treated as a privacy failure to fix immediately, not a tidiness note.
 
 - **`scripts/state.sh`** is the only thing allowed to modify `~/ITGuy/` — 12 test cases. Any number of Claude sessions can run at once, so it serialises writers with a lock, writes atomically so a crash can never leave a half-written profile, retires a belief from all three files or none of them, and refuses to save a profile the linter would flag. Tested by racing six writers at the registry and asserting nothing is lost.
@@ -168,15 +168,30 @@ The guard runs in every directory, including your own repositories. Two things m
 
 This is not a loophole: the protected-path rules run **first**, so `rm -rf ~/Documents/build` is still denied outright. A directory called `build` only reaches the allowlist when it sits outside your documents, desktop and pictures. And if one target in a command is unrecognised, the whole command still asks.
 
-**You can turn the ask tier off entirely.** Set `ITGUY_GUARD=relaxed` — in your shell profile, or in `env` in Claude Code's `settings.json`:
+**You choose how much of it applies.** Set `ITGUY_GUARD` in your shell profile, or in `env` in Claude Code's `settings.json`:
 
 ```json
-{ "env": { "ITGUY_GUARD": "relaxed" } }
+{ "env": { "ITGUY_GUARD": "data" } }
 ```
 
-That removes every *confirmation* prompt. It does **not** touch the deny rules: `rm` on Documents, Desktop, Pictures or the Trash, `sudo`, disk erasure and deleting backups stay blocked no matter what. That line is deliberate — the ask tier manages friction, the deny tier protects things you cannot get back, and an escape hatch that disabled both would defeat the point of having one.
+| Level | What it does |
+|---|---|
+| `strict` *(default)* | Everything: file protection, machine policy, confirmation prompts |
+| `data` | **Protects your files, leaves your machine alone.** Deletes inside Documents/Desktop/Pictures, the Trash, backups and whole-disk operations stay blocked. `sudo`, shutdown, SIP, firmware and every prompt are skipped |
+| `relaxed` | All deny rules, no confirmation prompts |
+| `off` | Nothing. Documented, not recommended |
 
-To remove the guard completely, install at project scope rather than user scope, or disable the plugin.
+**`data` is the setting for a developer.** It keeps the rules that defend things you cannot get back and drops the ones that amount to a system-wide command policy — which a Mac-maintenance plugin has no real mandate to impose on your unrelated work.
+
+A typo falls back to `strict`, because a mistyped level must never silently weaken the guard.
+
+To remove it entirely, install at project scope rather than user scope, or disable the plugin.
+
+### Why the guard is global at all
+
+A `PreToolUse` hook sees every Bash command in the session, and the payload carries **no field naming the plugin that issued it**. So this guard cannot restrict itself to its own workflows even in principle — it is global or it is nothing. Restricting it to this plugin's own commands would also protect almost nothing, since those workflows already use the Trash and dry-run by construction; the risk lives in ad-hoc commands.
+
+That is a real imposition, which is why the levels above exist and why this section is here rather than buried.
 
 - The plugin installs at **user scope**, so the guard applies in every directory, including your own repositories — not just when you are doing IT work. That is deliberate (a destructive command is destructive wherever you type it), but it is why `rm -rf node_modules` asks for confirmation while you are coding. Install at project scope instead if you want it confined.
 - The guard hook applies to every Bash call in sessions where the plugin is enabled. If you're a developer, `rm -rf` of build artifacts will trigger a confirm prompt (recursive deletes outside user-content folders are "ask", not "deny") — install at project scope if that bothers you.

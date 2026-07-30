@@ -257,6 +257,57 @@ def t_tier1_rules_still_deny_the_real_thing():
         assert guard(cmd).returncode == 2, f"a Tier-1 rule stopped denying: {cmd}"
 
 
+DATA_RULES = [
+    "rm ~/Documents/draft.txt",
+    'rm -rf "$HOME"/Pictures/2019',
+    "rm -rf ~/.Trash/*",
+    "tmutil delete /Volumes/TM/x",
+    "diskutil eraseDisk APFS X disk2",
+    "dd if=x.iso of=/dev/disk2",
+]
+POLICY_RULES = [
+    "sudo apt-get install x",
+    "shutdown -h now",
+    "csrutil disable",
+    "nvram boot-args=x",
+]
+
+
+def t_level_data_defends_files_and_leaves_the_machine_alone():
+    """The setting for a developer: photos protected, toolchain not policed.
+
+    A PreToolUse hook cannot scope itself to its own plugin — the payload has
+    no originating-plugin field — so it is global or nothing. `data` is the
+    honest middle: keep the rules that protect irreplaceable things, drop the
+    system-policy rules a Mac-maintenance plugin has no mandate to impose.
+    """
+    env = {"ITGUY_GUARD": "data"}
+    still_denied = [c for c in DATA_RULES if guard_env(c, env).returncode != 2]
+    assert not still_denied, "data mode stopped protecting files:\n  " + "\n  ".join(still_denied)
+
+    still_policed = [c for c in POLICY_RULES if guard_env(c, env).returncode == 2]
+    assert not still_policed, (
+        "data mode still imposes machine policy:\n  " + "\n  ".join(still_policed))
+
+    r = guard_env("rm -rf ~/code/scratch", env)
+    assert r.returncode == 0 and "ask" not in r.stdout, "data mode still prompts"
+
+
+def t_level_off_disables_everything():
+    for cmd in DATA_RULES + POLICY_RULES:
+        assert guard_env(cmd, {"ITGUY_GUARD": "off"}).returncode == 0, (
+            f"off mode still blocked: {cmd}")
+
+
+def t_unknown_level_falls_back_to_strict():
+    """A typo must not silently disable the guard."""
+    for bad in ("Relaxed", "DATA", "yes", "1", ""):
+        assert guard_env("rm ~/Documents/draft.txt", {"ITGUY_GUARD": bad}).returncode == 2, (
+            f"ITGUY_GUARD={bad!r} weakened the data rules")
+    # An unrecognised value must not silently drop machine policy either.
+    assert guard_env("csrutil disable", {"ITGUY_GUARD": "yes"}).returncode == 2
+
+
 def t_unresolvable_targets():
     for cmd in ["rm -f ~/{Documents,Desktop}/x.pdf", "rm -f ~/Doc*/tax-return.pdf",
                 "rm -f ~/D?cuments/tax.pdf", "rm -f ~/Downloads/../Documents/x.pdf"]:
@@ -309,6 +360,9 @@ EXTRA = [
     ("unresolvable targets denied", t_unresolvable_targets),
     ("quoted-span carve-out is not a bypass", t_quoted_span_carveout_is_not_a_bypass),
     ("tier-1 rules ignore prose", t_tier1_rules_also_ignore_prose),
+    ("level data: files defended, machine not policed", t_level_data_defends_files_and_leaves_the_machine_alone),
+    ("level off disables everything", t_level_off_disables_everything),
+    ("unknown level falls back to strict", t_unknown_level_falls_back_to_strict),
     ("tier-1 rules still deny the real thing", t_tier1_rules_still_deny_the_real_thing),
     ("build artefacts do not prompt", t_build_artifacts_do_not_prompt),
     ("artefact allowlist is not a bypass", t_artifact_allowlist_is_not_a_bypass),
