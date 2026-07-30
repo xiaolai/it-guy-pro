@@ -201,6 +201,62 @@ def t_relaxed_mode_drops_ask_but_never_deny():
             f"relaxed mode weakened a DENY rule, which must never happen: {cmd}")
 
 
+def t_quoted_span_carveout_is_not_a_bypass():
+    """`bash -c "rm -rf ~/Documents"` puts a REAL command inside quotes.
+
+    The prose carve-out strips quoted spans to decide whether a destructive
+    verb is being invoked. That is right for `git commit -m "...rm..."` and
+    catastrophically wrong for `-c`, which executes what follows.
+    """
+    for cmd in [
+        'bash -c "rm -rf $HOME/Documents"',
+        "sh -c 'rm -rf ~/Pictures'",
+        'zsh -c "rm ~/Desktop/notes.txt"',
+        'bash -lc "rm -rf ~/Movies"',
+    ]:
+        assert guard(cmd).returncode == 2, (
+            f"a real command hidden in a quoted -c argument was not denied: {cmd}")
+
+
+def t_tier1_rules_also_ignore_prose():
+    """Writing *about* a dangerous command is not running it.
+
+    The quoted-span carve-out was applied only to the destructive-verb rules,
+    so the Tier-1 rules still matched raw text: an `echo` mentioning emptying
+    the Trash, or a commit message naming a disk utility, was denied. It
+    blocked this plugin's own release four separate times.
+    """
+    allowed = [
+        'echo "the space in the Trash is only freed when you empty the trash"',
+        'git commit -m "guard now denies diskutil eraseDisk"',
+        'git commit -m "explain why we never call shutdown -h now"',
+        'echo "csrutil must stay enabled"',
+        'git commit -m "document that tmutil delete is out of bounds"',
+        'echo "mkfs is refused by the guard"',
+    ]
+    wrongly_denied = [c for c in allowed if guard(c).returncode == 2]
+    assert not wrongly_denied, (
+        "text describing a dangerous command was treated as the command:\n  "
+        + "\n  ".join(wrongly_denied))
+
+
+def t_tier1_rules_still_deny_the_real_thing():
+    """The prose carve-out must not weaken any Tier-1 rule."""
+    for cmd in [
+        'osascript -e \'tell application "Finder" to empty trash\'',
+        "diskutil eraseDisk APFS Backup disk2",
+        "shutdown -h now",
+        "csrutil disable",
+        "tmutil delete /Volumes/TM/Backups.backupdb/old",
+        "mkfs.ext4 /dev/disk2",
+        "nvram boot-args=x",
+        # and executed through a quoted shell argument
+        'bash -c "shutdown -h now"',
+        "sh -c 'csrutil disable'",
+    ]:
+        assert guard(cmd).returncode == 2, f"a Tier-1 rule stopped denying: {cmd}"
+
+
 def t_unresolvable_targets():
     for cmd in ["rm -f ~/{Documents,Desktop}/x.pdf", "rm -f ~/Doc*/tax-return.pdf",
                 "rm -f ~/D?cuments/tax.pdf", "rm -f ~/Downloads/../Documents/x.pdf"]:
@@ -251,6 +307,9 @@ def t_system_chmod_independently_covered():
 EXTRA = [
     ("path spelling matrix (48 combinations)", t_path_spelling_matrix),
     ("unresolvable targets denied", t_unresolvable_targets),
+    ("quoted-span carve-out is not a bypass", t_quoted_span_carveout_is_not_a_bypass),
+    ("tier-1 rules ignore prose", t_tier1_rules_also_ignore_prose),
+    ("tier-1 rules still deny the real thing", t_tier1_rules_still_deny_the_real_thing),
     ("build artefacts do not prompt", t_build_artifacts_do_not_prompt),
     ("artefact allowlist is not a bypass", t_artifact_allowlist_is_not_a_bypass),
     ("relaxed mode drops ask, never deny", t_relaxed_mode_drops_ask_but_never_deny),

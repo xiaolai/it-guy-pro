@@ -75,8 +75,31 @@ hitn() { printf '%s' "$norm" | grep -qE "$1"; }
 # verb in a command position, or is it inside a string?" — so `git commit -m
 # "...deletes ~/Documents..."` carries no verb here, while
 # `rm -f "$HOME"/Documents/x` still does.
-unq="$(printf '%s' "$cmd" | sed -e "s/'[^']*'//g" -e 's/"[^"]*"//g')"
-hitu() { printf '%s' "$unq" | grep -qE "$1"; }
+# ...but a quoted span is only inert when nothing EXECUTES it.
+#
+# `bash -c "rm -rf ~/Documents"` puts a real command inside quotes. Stripping
+# quoted spans there would hide the delete completely — trading a cosmetic
+# false positive for a silent false negative, which is the wrong direction for
+# a guard. So when the command hands a quoted string to a shell, to `eval`, or
+# to an interpreter's `-c`/`-e`, the quotes are treated as code and nothing is
+# stripped. Prose keeps its carve-out; executable strings do not get one.
+# NOTE: a literal grep, not the hit() helper — this runs before hit() is
+# defined, and calling it here failed with "command not found", which bash
+# treats as non-zero, so the check silently took the strip-quotes branch. A
+# guard that fails OPEN is worse than one that never had the check, so this
+# stays independent of definition order.
+# `osascript -e` is in this list for the same reason as `bash -c`: the quoted
+# argument is a program. The legitimate argv-form Trash recipe also uses it,
+# and still passes — it contains no destructive verb, so treating its text as
+# code changes nothing about the verdict.
+EXECUTES_QUOTES='(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno)[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*-[a-zA-Z]*[ce]([[:space:]]|$)|(^|[^a-zA-Z0-9_])eval([[:space:]]|$)|do[[:space:]]+shell[[:space:]]+script|(^|[^a-zA-Z0-9_])osascript[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*-e([[:space:]]|$)'
+if printf '%s' "$cmd" | grep -qE "$EXECUTES_QUOTES"; then
+  unq="$cmd"
+else
+  unq="$(printf '%s' "$cmd" | sed -e "s/'[^']*'//g" -e 's/"[^"]*"//g')"
+fi
+hitu()  { printf '%s' "$unq" | grep -qE  "$1"; }
+hitui() { printf '%s' "$unq" | grep -qiE "$1"; }
 
 # A single-line command is required for the remote-ssh exemption below:
 # grep matches per line, so any `ssh …` line anywhere would otherwise
@@ -120,10 +143,10 @@ hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && deny \
 hit '(^|[^a-zA-Z0-9_./-])dd[[:space:]]' && deny \
   "dd can silently destroy a disk. Use a purpose-specific tool instead and explain the goal to the user first."
 
-hit '(^|[^a-zA-Z0-9_])(mkfs|newfs_[a-z]+)' && deny \
+hitu '(^|[^a-zA-Z0-9_])(mkfs|newfs_[a-z]+)' && deny \
   "Filesystem formatting is out of bounds for the IT guy."
 
-hit 'diskutil[[:space:]]+(erase[a-zA-Z]*|reformat|partitionDisk|zeroDisk|secureErase)|diskutil[[:space:]]+apfs[[:space:]]+(delete|erase)|asr[[:space:]]+restore' && deny \
+hitu 'diskutil[[:space:]]+(erase[a-zA-Z]*|reformat|partitionDisk|zeroDisk|secureErase)|diskutil[[:space:]]+apfs[[:space:]]+(delete|erase)|asr[[:space:]]+restore' && deny \
   "Disk erase/partition/restore is out of bounds. If genuinely needed, walk the user through Disk Utility step by step instead."
 
 hit '>+[[:space:]]*/dev/(disk|rdisk)' && deny \
@@ -141,19 +164,19 @@ hit '(chmod|chown)[[:space:]]+-[a-zA-Z]*R' && hit '(/System|/Library|/usr|/bin|/
 hit 'launchctl[[:space:]]+(bootout[[:space:]]+system|unload[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(/System|/Library/LaunchDaemons))' && deny \
   "Unloading system daemons is out of bounds. For startup items, work only on the user's own LaunchAgents and explain each one first."
 
-hit '(^|[^a-zA-Z0-9_])csrutil' && deny \
+hitu '(^|[^a-zA-Z0-9_])csrutil' && deny \
   "System Integrity Protection stays on. Whatever the goal is, find another way."
 
-hit '(^|[^a-zA-Z0-9_])nvram[[:space:]]' && deny \
+hitu '(^|[^a-zA-Z0-9_])nvram[[:space:]]' && deny \
   "Firmware variables are out of bounds."
 
-hit '(^|[^a-zA-Z0-9_])(shutdown|reboot|halt)([[:space:]]+(-[a-zA-Z]+|now)|[[:space:]]*$)' && deny \
+hitu '(^|[^a-zA-Z0-9_])(shutdown|reboot|halt)([[:space:]]+(-[a-zA-Z]+|now)|[[:space:]]*$)' && deny \
   "Never restart or shut down the user's machine. If a restart is needed, tell the user why and let them do it when they are ready."
 
-hit 'tmutil[[:space:]]+(delete|disable)' && deny \
+hitu 'tmutil[[:space:]]+(delete|disable)' && deny \
   "Never delete or disable the user's backups. If old backups need thinning, show the user how in System Settings and let them decide."
 
-hiti 'empty[[:space:]]+(the[[:space:]]+)?trash' && deny \
+hitui 'empty[[:space:]]+(the[[:space:]]+)?trash' && deny \
   "Only the user empties the Trash. Tell them what is in it, how much space it frees, and let them do it in Finder (Finder > Empty Trash)."
 
 hit '\.Trash' && hit '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
