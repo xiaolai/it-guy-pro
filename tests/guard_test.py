@@ -150,13 +150,17 @@ def t_prose_describing_a_delete_is_not_a_delete():
         'echo "never run rm -rf ~/Pictures"',
         "printf '%s' 'rm -f ~/Desktop/x.pdf is denied'",
     ]
-    wrongly_denied = [c for c in allowed if guard(c).returncode == 2]
+    # One guard run per case, reused for both assertions — the suite spawns a
+    # subprocess per call, so running it twice per case doubled the wall clock
+    # for nothing.
+    results = [(c, guard(c)) for c in allowed]
+    wrongly_denied = [c for c, r in results if r.returncode == 2]
     assert not wrongly_denied, (
         "prose about deleting was treated as deleting:\n  " + "\n  ".join(wrongly_denied))
     # Nor should it prompt. The ask tier read the raw command too, so writing
     # about a recursive delete raised a confirmation dialog for a command that
     # was never going to run — noise that teaches people to approve blindly.
-    wrongly_asked = [c for c in allowed if '"ask"' in guard(c).stdout]
+    wrongly_asked = [c for c, r in results if '"ask"' in r.stdout]
     assert not wrongly_asked, (
         "prose about deleting raised a prompt:\n  " + "\n  ".join(wrongly_asked))
 
@@ -186,11 +190,11 @@ def t_build_artifacts_do_not_prompt():
     Prompting on every `rm -rf node_modules` is friction with no safety
     benefit, and constant prompts train a user to approve without reading.
     """
-    noisy = [c for c in [
+    noisy = [c for c, r in [(c, guard(c)) for c in [
         "rm -rf node_modules", "rm -rf target", "rm -rf build dist",
         "rm -rf .next", "rm -rf __pycache__", "rm -rf .venv",
         "rm -rf ./node_modules", "rm -rf ~/code/app/node_modules",
-    ] if guard(c).returncode != 0 or "ask" in guard(c).stdout]
+    ]] if r.returncode != 0 or "ask" in r.stdout]
     assert not noisy, "build artefacts still prompt:\n  " + "\n  ".join(noisy)
 
 
@@ -396,6 +400,136 @@ def t_root_rule_does_not_swallow_ordinary_paths():
         "the root rule swallowed ordinary paths:\n  " + "\n  ".join(wrongly_denied))
 
 
+# Findings from the cc-suite/Codex audit of the safety core. Every one was
+# reproduced against the live guard before being fixed, and every one is a way
+# a destructive command reached the disk at the DEFAULT level.
+AUDIT_HOLES = [
+    ("redirection hid a later operand",     "rm -rf node_modules >/tmp/log /"),
+    ("quoted separator split the target",   'rm -rf "/tmp/x|marker" /'),
+    ("quoting the command word hid it",     "'rm' -rf ~/Documents/archive"),
+    ("path-qualified command word",         '"/bin/rm" -rf ~/Documents/archive'),
+    ("long option before -c",               'bash --noprofile -c "rm -rf ~/Documents/archive"'),
+    ("option with argument before -c",      'bash -O extglob -c "rm -rf ~/Documents/archive"'),
+    ("stdin-driven executor",               "make -f - <<EOF\nall:\n\trm -rf ~/Documents\nEOF"),
+    ("absolute path to the disk writer",    "/bin/dd if=/dev/zero of=/dev/disk2"),
+    ("case-insensitive volume spelling",    "rm -rf /users/ada/documents/archive"),
+    ("variable operand under home",         'folder=Documents; rm ~/"$folder"/archive'),
+    ("target built by substitution",        'rm "$(printf ~/%s/archive Documents)"'),
+    ("find -delete on the root",            "find / -delete"),
+    ("find -delete on /Users",              "find /Users -delete"),
+    ("xargs rm fed from a pipe",            "echo / | xargs rm -rf"),
+    ("clobber operator truncation",         ": >| ~/Documents/archive"),
+    ("external volume user data",           "rm -rf /Volumes/FamilyPhotos/archive"),
+    ("runner prefix hid the verb",          "sudo rm -rf /"),
+    ("cron body scheduling a delete",       "crontab <<'EOF'\n0 3 * * * rm -rf ~/Documents\nEOF"),
+]
+
+
+def t_audit_findings_stay_closed():
+    """Every hole the audit found must stay shut at the DEFAULT level.
+
+    `data` is where these matter: it is what ships, and it has no ask tier to
+    catch anything the deny rules miss. Each of these was measured as ALLOW
+    before the fix.
+    """
+    leaked = [(name, cmd) for name, cmd in AUDIT_HOLES
+              if guard_env(cmd, {"ITGUY_GUARD": "data"}).returncode != 2]
+    assert not leaked, (
+        "audit findings reopened at the default level:\n  "
+        + "\n  ".join(f"{n}: {c!r}" for n, c in leaked))
+
+
+def t_audit_fixes_did_not_start_blocking_ordinary_work():
+    """The other half of the same audit: verb and operand must belong together.
+
+    Global text matching denied `rm -rf /tmp/cache; echo ~/Documents`, where
+    nothing touches the home folder, and read `rm -rf node_modules; echo
+    "never rm -rf /"` as a root wipe.
+    """
+    allowed = [
+        "rm -rf /tmp/cache; echo ~/Documents",
+        'rm -rf node_modules; echo "never rm -rf /"',
+        "rm -rf ./build && ls /System/Library/Fonts",
+        "rm -rf /Volumes/Scratch/build",          # build output on a scratch disk
+        "rm -rf $TMPDIR/cache",                   # expansion outside user content
+        "cat > /tmp/n.md <<'EOF'\ndocs mention rm -rf /\nEOF",
+        "find /tmp/scratch -name '*.tmp' -delete",
+    ]
+    blocked = [c for c in allowed
+               if guard_env(c, {"ITGUY_GUARD": "data"}).returncode == 2]
+    assert not blocked, (
+        "the audit fixes started blocking ordinary work:\n  " + "\n  ".join(blocked))
+
+
+def t_ssh_exemption_covers_only_a_lone_ssh_command():
+    """`ssh host uptime; sudo …` presented a LOCAL sudo as remote.
+
+    The exemption tested whether the line began with ssh, so anything after a
+    separator inherited the remote excuse and a deny became an ask.
+    """
+    r = guard_env("ssh host uptime; sudo rm -rf /etc/hosts", {"ITGUY_GUARD": "strict"})
+    assert r.returncode == 2, (
+        f"a local sudo after an ssh command was not denied: {r.stdout or r.stderr}")
+    # A genuine lone remote command keeps its exemption.
+    r = guard_env("ssh admin@192.0.2.10 'sudo apt-get install -y curl'",
+                  {"ITGUY_GUARD": "strict"})
+    assert '"ask"' in r.stdout, "a real remote sudo lost its exemption"
+
+
+def t_guard_refuses_when_it_cannot_read_the_command():
+    """An unread command must not be an allowed command."""
+    r = subprocess.run(["bash", GUARD], input="", capture_output=True, text=True,
+                       timeout=30, env=dict(os.environ, ITGUY_GUARD="data"))
+    assert r.returncode == 2, "an empty payload was allowed through"
+    assert "empty" in r.stderr.lower(), r.stderr
+
+
+def t_every_delete_in_a_chain_is_examined():
+    """Not just the last one.
+
+    The extraction skipped past everything before the delete with a greedy
+    `.*[;&|]`, which landed on the LAST delete in the command. `rm -rf / &&
+    rm -rf ./build` was inspected only at `./build` and ALLOWED — a wipe of the
+    whole disk, at the default level, where there is no prompt to catch it.
+    """
+    for level in ("strict", "data", "relaxed"):
+        missed = [c for c in [
+            "rm -rf / && rm -rf ./build",
+            "rm -rf /System; rm -rf ./dist",
+            "rm -rf ~/* && rm -rf node_modules",
+            "rm -rf /Users && echo done",
+            "echo x | xargs rm -rf /",
+            "rm -rf /usr && rm -rf /etc",
+            "cd /tmp && rm -rf /Applications && make",
+        ] if guard_env(c, {"ITGUY_GUARD": level}).returncode != 2]
+        assert not missed, (
+            f"a delete earlier in the chain went unexamined at {level}:\n  "
+            + "\n  ".join(missed))
+
+
+def t_whole_tree_rule_ignores_prose():
+    """It gated on the quote-stripped copy, so writing about a wipe was a wipe.
+
+    This rule was written after the v1.8.1 prose carve-out, so it never got it:
+    `echo "never rm -rf /System on a Mac"` was denied at the DEFAULT level,
+    where no prompt exists to wave it through.
+    """
+    allowed = [
+        'echo "never rm -rf /System on a Mac"',
+        'git commit -m "the guard denies rm -rf /"',
+        'git commit -m "rm -rf /Users is refused"',
+        "echo 'do not rm -rf /Applications'",
+    ]
+    wrongly_denied = [c for c in allowed
+                      if guard_env(c, {"ITGUY_GUARD": "data"}).returncode == 2]
+    assert not wrongly_denied, (
+        "prose naming a system path was denied:\n  " + "\n  ".join(wrongly_denied))
+    # ...while a quoted or $HOME-spelled real target still resolves.
+    for cmd in ['rm -rf "$HOME"/*', "rm -rf '/Users/joe'/*", "rm -rf /System"]:
+        assert guard_env(cmd, {"ITGUY_GUARD": "data"}).returncode == 2, (
+            f"the prose gate hid a real wipe: {cmd}")
+
+
 def t_delete_targets_end_where_the_delete_does():
     """A delete's target list must stop at the next command separator.
 
@@ -414,15 +548,16 @@ def t_delete_targets_end_where_the_delete_does():
         "rm -rf node_modules && du -sh /usr/local",
         "rm -rf /tmp/a; cp -R /Applications/Foo.app /tmp/b",
     ]
-    wrongly_denied = [c for c in not_a_wipe if guard(c).returncode == 2]
+    results = [(c, guard(c)) for c in not_a_wipe]
+    wrongly_denied = [c for c, r in results if r.returncode == 2]
     assert not wrongly_denied, (
         "a later command's arguments were read as delete targets:\n  "
         + "\n  ".join(wrongly_denied))
 
     # Build output followed by another command must still not even prompt.
-    quiet = ["rm -rf ./build && ls /System/Library/Fonts",
-             "rm -rf node_modules && du -sh /usr/local"]
-    noisy = [c for c in quiet if '"ask"' in guard(c).stdout]
+    quiet = {"rm -rf ./build && ls /System/Library/Fonts",
+             "rm -rf node_modules && du -sh /usr/local"}
+    noisy = [c for c, r in results if c in quiet and '"ask"' in r.stdout]
     assert not noisy, (
         "a trailing command re-armed the prompt on build output:\n  " + "\n  ".join(noisy))
 
@@ -714,6 +849,12 @@ EXTRA = [
     ("whole-disk destruction denied at every level", t_whole_disk_destruction_is_denied_at_every_level),
     ("root rule does not swallow ordinary paths", t_root_rule_does_not_swallow_ordinary_paths),
     ("delete targets end where the delete does", t_delete_targets_end_where_the_delete_does),
+    ("every delete in a chain is examined", t_every_delete_in_a_chain_is_examined),
+    ("audit findings stay closed", t_audit_findings_stay_closed),
+    ("audit fixes did not block ordinary work", t_audit_fixes_did_not_start_blocking_ordinary_work),
+    ("ssh exemption covers only a lone ssh command", t_ssh_exemption_covers_only_a_lone_ssh_command),
+    ("guard refuses when it cannot read the command", t_guard_refuses_when_it_cannot_read_the_command),
+    ("whole-tree rule ignores prose", t_whole_tree_rule_ignores_prose),
     ("every block names the level and the way out", t_every_block_names_the_level_and_the_way_out),
     ("payload parse failure over-blocks, never under-blocks", t_payload_parse_failure_over_blocks_rather_than_under_blocks),
     ("multi-line quoted prose is still prose", t_multiline_quoted_prose_is_still_prose),

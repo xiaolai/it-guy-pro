@@ -39,7 +39,7 @@ set -f
 # them is missing, `hit` returns 127 — non-zero — and every rule silently
 # decides "no match", so the guard allows everything while looking healthy.
 # That is the one failure mode a guard may not have. Fail loud instead.
-for _tool in grep sed tr awk wc; do
+for _tool in cat grep sed tr awk wc; do
   command -v "$_tool" >/dev/null 2>&1 || {
     echo "mac-it-guy-pro guard: cannot run — '$_tool' is not on PATH, so no safety rule can be evaluated. Refusing rather than allowing every command unchecked." >&2
     exit 2
@@ -47,6 +47,14 @@ for _tool in grep sed tr awk wc; do
 done
 
 payload="$(cat)"
+
+# An empty payload means the command could not be read, not that there was no
+# command. Every rule below would match nothing and the guard would allow
+# whatever it failed to see — the one direction it must never fail in.
+[ -n "$payload" ] || {
+  echo "mac-it-guy-pro guard: the tool payload was empty, so the command could not be inspected. Refusing rather than allowing an unread command." >&2
+  exit 2
+}
 
 # --- Extract tool_input.command precisely via JXA (ships on every Mac). ---
 # Falls back to the raw payload on non-macOS or on parse failure. That is
@@ -91,7 +99,20 @@ fi
 # Note this grants nothing new: `echo "rm -rf ~/Documents" > f` is already
 # allowed today by the quoted-span carve-out. Writing a dangerous string to a
 # file was never the blocked step; executing it is, and that stays blocked.
-HEREDOC_EXECUTES='(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno|ssh|scp|osascript|env|xargs|eval|source|crontab|at|sudo|doas)([[:space:]]|$)|\||\$\(|`|(^|[^a-zA-Z0-9_])\.[[:space:]]'
+# Interpreter knowledge lives in ONE place. It used to be spelled out in three
+# independent regexes that had already drifted, so a runtime covered by one rule
+# was invisible to another.
+INTERP='(ba|z|k|da)?sh|python3?|perl|ruby|node|deno|php|lua|swift|osascript|awk|sed|make|xargs|env|nohup|time'
+
+# Heredoc bodies are stripped only for an explicit ALLOWLIST of data sinks.
+# The old denylist tried to enumerate everything that executes stdin and could
+# not: `make -f - <<EOF` runs a recipe, and `php`, `lua` and `swift` were all
+# absent, so their bodies were removed and the command allowed. An allowlist
+# fails the safe way — an unknown command keeps its body under inspection.
+HEREDOC_SINKS='^[[:space:]]*(/[^[:space:]]*/)?(cat|tee)([[:space:]]|$)'
+# ...and even a sink re-arms the check if anything downstream could run the text.
+HEREDOC_EXECUTES="(^|[^a-zA-Z0-9_])(${INTERP}|ssh|scp|eval|source|crontab|at|sudo|doas)([[:space:]]|\$)|\\||\\\$\\(|\`|(^|[^a-zA-Z0-9_])\\.[[:space:]]"
+
 case "$cmd" in
   *'<<'*)
     nohd="$(printf '%s\n' "$cmd" | awk '
@@ -122,7 +143,9 @@ case "$cmd" in
     # awk exiting 3 for an unterminated heredoc skipped the grep and fell
     # straight into the `||` branch, applying the carve-out in exactly the case
     # it must not be applied.
-    if [ $? -eq 0 ] && ! printf '%s' "$nohd" | grep -qE "$HEREDOC_EXECUTES"; then
+    if [ $? -eq 0 ] \
+      && printf '%s' "$nohd" | grep -qE "$HEREDOC_SINKS" \
+      && ! printf '%s' "$nohd" | grep -qE "$HEREDOC_EXECUTES"; then
       cmd="$nohd"
     fi
     ;;
@@ -146,6 +169,143 @@ norm="$(printf '%s' "$cmd" \
         -e 's|///*|/|g')"
 
 hitn() { printf '%s' "$norm" | grep -qE "$1"; }
+# macOS volumes are case-insensitive by default, so `/users/ada/documents` is
+# the same directory as `/Users/Ada/Documents`. Matching only the canonical
+# casing let the lower-case spelling through.
+hitni() { printf '%s' "$norm" | grep -qiE "$1"; }
+
+# --- Segments: a command is a sequence of commands ---------------------------
+#
+# Every rule used to ask "does this TEXT contain a destructive verb, and does
+# this TEXT contain a protected path?" — two independent questions about the
+# whole string. That is wrong in both directions:
+#   `rm -rf /tmp/cache; echo ~/Documents`      denied, though nothing touches it
+#   `rm -rf node_modules; echo "never rm -rf /"` read as a root wipe
+# and it is why a verb in one command could be paired with a path in another.
+#
+# `seg_norm` emits one normalized segment per line, so each rule can ask both
+# questions about the SAME command. Separators inside quotes are masked before
+# splitting, because a quoted path may legitimately contain one — `rm -rf
+# "/tmp/x|marker" /` split at the `|`, and the real target `/` was discarded
+# with the phantom second half.
+SEP_SEMI=$'\002'; SEP_AMP=$'\003'; SEP_PIPE=$'\004'
+mask_quoted_separators() {
+  awk -v s="$SEP_SEMI" -v a="$SEP_AMP" -v p="$SEP_PIPE" '
+    {
+      out = ""; q = ""; prev = ""
+      for (i = 1; i <= length($0); i++) {
+        c = substr($0, i, 1)
+        if (q != "") {
+          if (c == q) q = ""
+          else if (c == ";") c = s
+          else if (c == "&") c = a
+          else if (c == "|") c = p
+        } else if (c == "\"" || c == "\047") q = c
+        # `>|` is bash-s clobber redirection, not a pipe. Splitting there put
+        # the redirection and its target in different segments, so the one
+        # spelling that force-overwrites even under noclobber was invisible.
+        else if (c == "|" && prev == ">") c = p
+        out = out c
+        prev = c
+      }
+      print out
+    }'
+}
+normalize_seg() {
+  tr -d '"\047\\' \
+    | sed -e 's/\${HOME}/~/g' \
+          -e 's/\$HOME/~/g' \
+          -e 's|~[a-zA-Z_][a-zA-Z0-9_.-]*/|~/|g' \
+          -e 's|/\./|/|g' \
+          -e 's|///*|/|g'
+}
+seg_norm() {
+  printf '%s' "$cmd" \
+    | mask_quoted_separators \
+    | tr ';&|' '\n\n\n' \
+    | tr "$SEP_SEMI$SEP_AMP$SEP_PIPE" ';&|' \
+    | normalize_seg
+  # `bash -c "rm -rf ~/Documents"` is one segment whose command word is `bash`,
+  # so a per-segment verb check saw an interpreter and stopped. The quoted
+  # argument IS a command line; emit its contents as segments too, so the verb
+  # inside gets read in command position like any other.
+  if printf '%s' "$cmd" | grep -qE "$EXECUTES_QUOTES"; then
+    printf '%s' "$cmd" \
+      | awk '
+          BEGIN { sq = sprintf("%c", 39); dq = sprintf("%c", 34) }
+          {
+            out = ""; cur = ""; inq = ""
+            for (i = 1; i <= length($0); i++) {
+              c = substr($0, i, 1)
+              if (inq == "") { if (c == sq || c == dq) { inq = c; cur = "" } }
+              else if (c == inq) { out = out " " cur; inq = "" }
+              else cur = cur c
+            }
+            if (out != "") print out
+          }' \
+      | tr ';&|' '\n\n\n' \
+      | normalize_seg
+  fi
+}
+
+# A verb only counts when it is in COMMAND POSITION — at the start of a
+# segment, not buried in an argument. This is what separates
+# `'rm' -rf ~/Documents` (quoting the command word hid the verb from every
+# rule) and `/bin/rm -rf …` (a path-qualified verb likewise) from
+# `git commit -m "… rm -rf ~/Documents …"`, where `rm` follows `-m` and is
+# prose. An optional leading directory is allowed so `/bin/rm` and `/usr/bin/dd`
+# are recognised for what they are.
+cmdpos() {
+  seg_norm | grep -qE "${LEAD}(/[^[:space:]]*/)?$1([[:space:]]|\$)"
+}
+
+# The targets of EVERY delete in the command, one per line.
+#
+# The old inline extraction used a greedy `.*[;&|]` to skip past everything
+# before the delete, which landed on the LAST delete in the command and
+# examined only that one. `rm -rf / && rm -rf ./build` was inspected at
+# `./build` and allowed — a wipe of the whole disk, at the default level.
+# Splitting on separators first means every delete is inspected on its own,
+# and `echo x | xargs rm -rf /` is reached too.
+#
+# Targets come from `norm` so quoted and $HOME-spelled paths still resolve;
+# whether a delete is being INVOKED is a separate question, answered by the
+# prose-aware `hitu` at each call site.
+# A segment whose command word is `rm`, directly or via `xargs`. Leading
+# VAR=value assignments and an absolute path to the binary are both allowed.
+# What may legitimately sit between the start of a segment and the real command
+# word. Getting this list wrong is a fail-open, not a cosmetic miss: with only
+# VAR=value assignments allowed, `sudo rm -rf /` had command word `sudo`, the
+# whole-tree rule never saw a delete, and a root wipe was allowed at the default
+# level. A cron schedule is five fields and then a command, and `crontab <<EOF`
+# bodies are read here too, so those fields count as lead-in as well.
+RUNNER='(sudo|doas|env|nohup|time|command|builtin|exec|nice|ionice|xargs)([[:space:]]+-[^[:space:]]+)*[[:space:]]+'
+CRONFIELD='([0-9*,/-]+[[:space:]]+){5}'
+LEAD="^[[:space:]]*(${CRONFIELD})?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+|${RUNNER})*"
+
+# When extraction failed there are no shell segments to speak of — `cmd` is the
+# raw JSON payload and every verb sits mid-line inside a quoted value. Command
+# position is meaningless there, so the anchor degrades to "anywhere", which is
+# what keeps the fallback over-blocking instead of going quiet.
+[ "$parsed" -eq 1 ] || LEAD='(^|[^a-zA-Z0-9_])'
+RM_CMDPOS="${LEAD}((/[^[:space:]]*/)?rm|xargs([[:space:]]+-[^[:space:]]+)*[[:space:]]+(/[^[:space:]]*/)?rm)([[:space:]]|\$)"
+
+DESTRUCTIVE_CMDPOS="${LEAD}(/[^[:space:]]*/)?(rm|unlink|truncate|shred|srm|find|xargs|chmod|chown)([[:space:]]|\$)"
+danger_segs="$(seg_norm | grep -E "$DESTRUCTIVE_CMDPOS")"
+hitd()  { printf '%s' "$danger_segs" | grep -qE  "$1"; }
+hitdi() { printf '%s' "$danger_segs" | grep -qiE "$1"; }
+
+rm_targets() {
+  # Redirections are removed as TOKENS, not by truncating the rest of the line.
+  # Truncating discarded every operand that followed one, so
+  # `rm -rf node_modules >/tmp/log /` was inspected as if `/` were not a target
+  # and a whole-disk wipe was allowed.
+  seg_norm \
+    | grep -E "$RM_CMDPOS" \
+    | sed -E 's/^(.*[^a-zA-Z0-9_])?rm[[:space:]]+//' \
+    | sed -E 's/[<>]+[[:space:]]*[^[:space:]]+//g' \
+    | tr ' \t' '\n\n'
+}
 
 # A second copy with quoted spans REMOVED, used to decide whether a
 # destructive verb is really being invoked.
@@ -181,7 +341,12 @@ hitn() { printf '%s' "$norm" | grep -qE "$1"; }
 # like prose, so `python3 - <<PY … os.system('rm -rf ~/Documents') … PY` reached
 # only the ask tier — and ask is off at the default level, so it was allowed.
 # An interpreter followed by a bare `-` or a heredoc is executing what follows.
-EXECUTES_QUOTES='(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno)[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*-[a-zA-Z]*[ce]([[:space:]]|$)|(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno)[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(-([[:space:]]|$)|<<)|(^|[^a-zA-Z0-9_])eval([[:space:]]|$)|do[[:space:]]+shell[[:space:]]+script|(^|[^a-zA-Z0-9_])osascript[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*-e([[:space:]]|$)'
+# An interpreter's program body is code wherever the execution flag sits.
+# The old form only allowed short single-letter options before `-c`, so
+# `bash --noprofile -c "…"` and `bash -O extglob -c "…"` had their program
+# stripped as prose and were allowed. `[^|;&]*` keeps the search inside one
+# command so a `-c` in a later command cannot vouch for an earlier interpreter.
+EXECUTES_QUOTES="(^|[^a-zA-Z0-9_])(${INTERP})[[:space:]][^|;&]*(-[a-zA-Z]*[ce]|--command|--eval)([[:space:]]|\$)|(^|[^a-zA-Z0-9_])(${INTERP})[[:space:]]+([^|;&]*[[:space:]])?(-([[:space:]]|\$)|<<)|(^|[^a-zA-Z0-9_])eval([[:space:]]|\$)|do[[:space:]]+shell[[:space:]]+script"
 # ...and it must not be applied at all when extraction FAILED.
 #
 # On the fallback path `cmd` is the raw JSON payload, where the whole command
@@ -301,7 +466,12 @@ PROT='(~|\$HOME|/Users/[^/[:space:]"'\'']+)/(Documents|Desktop|Downloads|Picture
 # starts with ssh and carries no locally-executed option: ProxyCommand and
 # LocalCommand run on THIS machine, so a sudo there is local escalation in
 # an ssh costume.
-if [ "$newlines" -eq 0 ] && hit '^[[:space:]]*ssh[[:space:]]' && ! hiti '(proxycommand|localcommand)'; then
+# One segment only. The old test asked whether the LINE started with ssh, so
+# `ssh host uptime; sudo rm -rf /etc/hosts` presented its local sudo as remote
+# and downgraded a deny to an ask.
+seg_count="$(seg_norm | grep -cE '[^[:space:]]')"
+if [ "$newlines" -eq 0 ] && [ "$seg_count" -eq 1 ] \
+  && hit '^[[:space:]]*ssh[[:space:]]' && ! hiti '(proxycommand|localcommand)'; then
   ask_on && hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && ask \
     "This runs sudo on the remote server, not on this Mac. Confirm the target host with the user, and remember the guard cannot protect the far end."
 fi
@@ -309,7 +479,11 @@ fi
 policy_on && hitu '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && deny \
   "sudo is never run by the agent. Give the user the exact command to run themselves (tell them to type '! <command>' in the prompt) plus a one-sentence plain-language explanation of what it does."
 
-hitu '(^|[^a-zA-Z0-9_./-])dd[[:space:]]' && deny \
+# Command-position, so an absolute path to the binary counts. The old boundary
+# excluded `/` before the verb to avoid matching words that merely end in the
+# same two letters, which also excluded every absolute path to it —
+# `/bin/dd if=/dev/zero of=/dev/disk2` was allowed at every level.
+cmdpos 'dd' && deny \
   "dd can silently destroy a disk. Use a purpose-specific tool instead and explain the goal to the user first."
 
 hitu '(^|[^a-zA-Z0-9_])(mkfs|newfs_[a-z]+)' && deny \
@@ -394,39 +568,97 @@ hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(~|/Users/[^/[:spa
 # Bare roots only. `/usr/local/share/x` and `/opt/myapp/target` are ordinary
 # paths and stay allowed; `/usr` and `/opt` themselves are not. /System/Volumes/Data
 # is named explicitly because on current macOS it *is* the user's whole disk.
+ARTIFACT='(node_modules|target|build|dist|out|\.next|\.nuxt|\.turbo|\.parcel-cache|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|venv|\.venv|\.tox|\.gradle|Pods|DerivedData|coverage|\.cache|vendor|bin/Debug|bin/Release|obj)'
+
 ROOTS='/(System|Library|Applications|Users|usr|bin|sbin|etc|var|private|opt|Volumes|cores|Network)'
-if hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]'; then
-  # Truncate at the next command separator. Without this the target list ran
-  # to end of line and swallowed the arguments of everything that followed:
-  # `rm -rf /tmp/x && mkdir -p /tmp/x/bin; for d in /bin /usr/bin; …` was denied
-  # for "deleting /bin", which appeared only as an argument to a later command.
-  # The delete's targets end where the delete does.
-  wipe_targets="$(printf '%s' "$norm" \
-    | sed -E 's/(^|.*[;&|])[[:space:]]*rm[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
-    | sed -E 's/[;&|<>].*$//')"
-  for t in $wipe_targets; do
+# Gated on `hitu`, not `hitn`. Gating on the quote-stripped copy made this rule
+# read prose as a command — `echo "never rm -rf /System on a Mac"` was denied,
+# at the default level, where there is no prompt to wave it through. The prose
+# carve-out shipped in v1.8.1 covered every other rule but not this one,
+# because this one was written after it.
+if hitu '(^|[^a-zA-Z0-9_])rm[[:space:]]'; then
+  for t in $(rm_targets); do
     case "$t" in -*) continue ;; esac
     printf '%s' "$t" | grep -qE "^(/|/\*|~/\*|/Users/[^/[:space:]]+/\*|/System/Volumes/Data/?\*?|${ROOTS}/?\*?)$" && deny \
       "That deletes an entire system or user tree ($t) — every file under it, with no Trash copy. Name the specific folder you mean instead."
+
+    # An operand the guard cannot resolve is an operand it cannot clear.
+    # `folder=Documents; rm ~/"$folder"/archive` deleted protected content at
+    # every level, because the literal path never appears. Limited to targets
+    # rooted in the home folder, or built entirely by substitution, so ordinary
+    # `rm -rf $TMPDIR/build` is untouched.
+    case "$t" in
+      '~'/*|/Users/*)
+        printf '%s' "$t" | grep -qE '[$`]' && deny \
+          "That deletes a path this guard cannot resolve ($t) — it is built from a variable, so there is no way to tell whether it points inside your documents. Re-run with the full path written out."
+        ;;
+      '$('*|'`'*)
+        deny "That deletes whatever a command prints ($t), which cannot be checked before it runs. Print the list first, look at it, then delete the paths you meant."
+        ;;
+    esac
+
+    # User content on an external disk is still user content — often the ONLY
+    # copy, since that is what people buy them for. Build output on a scratch
+    # volume stays exempt, exactly as it is on the internal disk.
+    case "$t" in
+      /Volumes/*/*)
+        printf '%s' "$t" | grep -qE "(^|/)$ARTIFACT/?\$" || deny \
+          "That deletes files on an external disk ($t), which is usually where the only copy of something lives. Move them to the Trash instead, or name the build folder explicitly."
+        ;;
+    esac
   done
 fi
 
+# `find … -delete` walks a whole tree and leaves no Trash copy, so it deserves
+# the same root check as rm. It had none: `find / -delete` and `find /Users
+# -delete` were an ask at `strict` and silently allowed at the default level.
+seg_norm | grep -E "${LEAD}(/[^[:space:]]*/)?find([[:space:]]|\$)" \
+  | grep -qE '[[:space:]]-delete([[:space:]]|$)' && {
+  for t in $(seg_norm | grep -E "${LEAD}(/[^[:space:]]*/)?find([[:space:]]|\$)" \
+              | grep -E '[[:space:]]-delete([[:space:]]|$)' \
+              | sed -E 's/^(.*[^a-zA-Z0-9_])?find[[:space:]]+//' \
+              | sed -E 's/[[:space:]]-.*$//'); do
+    case "$t" in -*) continue ;; esac
+    printf '%s' "$t" | grep -qiE "^(/|${ROOTS}/?|/Users/[^/[:space:]]+/?)\$" && deny \
+      "find -delete on $t walks an entire system or user tree and removes every match with no Trash copy. Narrow the path, list what matches first, then move approved items to the Trash."
+  done
+}
+
+# `xargs rm` deletes whatever arrives on stdin. The producer is a different
+# command and often a different machine, so the targets cannot be known before
+# they are deleted — `echo / | xargs rm -rf` was allowed at the default level.
+hitd "xargs([[:space:]]+-[^[:space:]]+)*[[:space:]]+(/[^[:space:]]*/)?rm([[:space:]]|\$)" && deny \
+  "Piping a list into rm deletes whatever the list happens to contain, which cannot be checked first and leaves no Trash copy. Print the list, look at it, then move the approved items to the Trash."
+
 # ---------- Tier 2: deny rm/find-delete/xargs-rm on user content ----------
 
-if hitn "$PROT"; then
+# Only segments whose OWN command word is destructive, so a verb in one command
+# is never paired with a path in another. `rm -rf /tmp/cache; echo ~/Documents`
+# was denied on exactly that mistake, and `rm -rf node_modules; echo "never
+# rm -rf /"` was read as a root wipe.
+# Matched case-insensitively: macOS volumes are case-insensitive by default, so
+# `rm -rf /users/ada/documents` reaches the same files as the canonical casing
+# and was silently allowed.
+if [ -n "$danger_segs" ] && hitdi "$PROT"; then
   # Destruction is an outcome, not a verb. Truncation and unlink leave no
   # Trash copy at all, so they are stricter than rm, not looser.
-  hitu '(^|[^a-zA-Z0-9_])(truncate|unlink)[[:space:]]' && hitn '(truncate|unlink)' && deny \
+  hitdi '(^|[^a-zA-Z0-9_])(truncate|unlink)[[:space:]]' && deny \
     "That erases user content without leaving a Trash copy. Move it to the Trash instead — see the argv-form osascript recipe in the mac-it-guy-pro macos-recipes skill."
-  hitn '(^|[^>])>[[:space:]]*(~|/Users/[^/[:space:]]+)/(Documents|Desktop|Downloads|Pictures|Movies|Music|Library|ITGuy)' && deny \
-    "Redirecting over a file truncates it with no Trash copy and no undo. Write to a new name, or move the old file to the Trash first."
-  hitu '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
+  hitdi '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
     "Never rm user content. Move it to the Trash instead so the user can undo — use the argv-form osascript Trash recipe in the mac-it-guy-pro macos-recipes skill."
-  hitu '(^|[^a-zA-Z0-9_])find[[:space:]]' && hitu '[[:space:]]-delete([[:space:]]|$)' && deny \
+  hitdi '(^|[^a-zA-Z0-9_])find[[:space:]]' && hitdi '[[:space:]]-delete([[:space:]]|$)' && deny \
     "Never mass-delete user content with find. List the candidates, show them to the user, then move approved items to the Trash."
-  hitu 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && deny \
+  hitdi 'xargs([[:space:]]+-[^[:space:]]+)*[[:space:]]+(/[^[:space:]]*/)?rm([[:space:]]|$)' && deny \
     "Never pipe user-content paths into rm. List the candidates, show them to the user, then move approved items to the Trash."
 fi
+
+# Truncating a protected file by redirection. Checked against every segment, not
+# only destructive ones, because `>` needs no command at all — `: >| ~/Documents/x`
+# is a complete truncation. `>|` is bash's clobber operator and was missed, so
+# the one spelling that force-overwrites even under `noclobber` was the one
+# spelling that got through.
+seg_norm | grep -qiE "(^|[^>])>[|]?[[:space:]]*${PROT}" && deny \
+  "Redirecting over a file truncates it with no Trash copy and no undo. Write to a new name, or move the old file to the Trash first."
 
 # ---------- Tier 3: ask (forces a user prompt even when allowlisted) ----------
 
@@ -438,18 +670,14 @@ fi
 # Safe because the protected-path deny above has ALREADY run: `rm -rf
 # ~/Documents/build` is denied before reaching here, so a directory named
 # `build` only reaches this line when it sits outside user content.
-ARTIFACT='(node_modules|target|build|dist|out|\.next|\.nuxt|\.turbo|\.parcel-cache|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|venv|\.venv|\.tox|\.gradle|Pods|DerivedData|coverage|\.cache|vendor|bin/Debug|bin/Release|obj)'
 
 if hitu '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)'; then
-  # Every target must be a known artefact; one unrecognised path re-arms it.
-  # Same truncation as the whole-tree rule above: a target list that ran to end
-  # of line pulled in the arguments of later commands, so `rm -rf node_modules
-  # && ls ~/code` counted `~/code` as a delete target and re-armed the prompt.
-  targets="$(printf '%s' "$norm" \
-    | sed -E 's/(^|.*[;&|])[[:space:]]*rm[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
-    | sed -E 's/[;&|<>].*$//')"
+  # Every target of every delete must be a known artefact; one unrecognised
+  # path re-arms the prompt. Shares `rm_targets` with the whole-tree rule so
+  # the two cannot drift — they had the same last-delete-only bug, because
+  # they were the same eight lines of extraction copied twice.
   unknown=0
-  for t in $targets; do
+  for t in $(rm_targets); do
     case "$t" in -*) continue ;; esac
     printf '%s' "$t" | grep -qE "(^|/)$ARTIFACT/?$" || unknown=1
   done
