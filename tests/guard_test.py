@@ -2,10 +2,12 @@
 """Behavioral test suite for mac-it-guy-pro guard.sh (PreToolUse hook)."""
 import json
 import os
+import pathlib
 import subprocess
 import sys
 
 GUARD = __file__.rsplit("/tests/", 1)[0] + "/scripts/guard.sh"
+ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent
 
 # (label, command, description, expected) — expected: "allow" | "deny" | "ask"
 CASES = [
@@ -461,6 +463,61 @@ def t_audit_fixes_did_not_start_blocking_ordinary_work():
         "the audit fixes started blocking ordinary work:\n  " + "\n  ".join(blocked))
 
 
+def t_remote_payloads_are_not_local_commands():
+    """The quoted argument to ssh/scp/rsync runs on a machine this guard cannot see.
+
+    v1.9.0 re-read it as a local command, so `ssh admin@vps 'rm -rf
+    ~/Documents/old'` — tidying the SERVER's home folder — was denied as though
+    it were deleting this Mac's documents, at the default level.
+    """
+    allowed = [
+        "ssh admin@vps 'rm -rf ~/Documents/old'",
+        "ssh admin@vps 'find /var/log -name \"*.gz\" -delete'",
+        "ssh root@vps 'rm -rf /var/cache/apt'",
+        "rsync -az ~/site/ admin@vps:/var/www/",
+        "scp ./config.json root@vps:/etc/xray/",
+    ]
+    blocked = [c for c in allowed
+               if guard_env(c, {"ITGUY_GUARD": "data"}).returncode == 2]
+    assert not blocked, (
+        "a remote payload was judged as a local command:\n  " + "\n  ".join(blocked))
+
+
+def t_local_half_of_a_remote_command_is_still_local():
+    """Scoping to the far end must not hand over what still runs here."""
+    for cmd in [
+        # the redirect truncates a file on THIS Mac
+        "ssh admin@vps 'cat report' > ~/Documents/report.txt",
+        # ssh options execute locally, whatever they are attached to
+        "ssh -o ProxyCommand='rm -rf ~/Documents' a@vps uptime",
+        "ssh -o LocalCommand='rm -rf ~/Pictures' a@vps uptime",
+    ]:
+        assert guard_env(cmd, {"ITGUY_GUARD": "data"}).returncode == 2, (
+            f"the local half of a remote command was let through: {cmd}")
+
+
+def t_an_empty_pattern_can_never_match_everything():
+    """`grep -qE ""` matches every line, so an unset pattern is an always-true rule.
+
+    EXECUTES_QUOTES was defined below its first use, so at that point it was
+    empty and the quoted-program branch fired for every quoted command in
+    existence — which is how remote payloads became local commands and how
+    quoted prose beginning with a verb became a delete.
+    """
+    src = (ROOT_DIR / "scripts" / "guard.sh").read_text()
+    for name in ("INTERP", "EXECUTES_QUOTES", "REMOTE_PAYLOAD", "PROT", "LEAD"):
+        define = next((i for i, l in enumerate(src.splitlines())
+                       if l.startswith(f"{name}=")), None)
+        assert define is not None, f"{name} is not defined"
+        first_use = next((i for i, l in enumerate(src.splitlines())
+                          if f'"${name}"' in l or f"${{{name}}}" in l), None)
+        if first_use is not None:
+            assert define < first_use, (
+                f"{name} is used on line {first_use + 1} but defined on line "
+                f"{define + 1} — it would be empty, and an empty pattern matches "
+                f"everything")
+
+
 def t_ssh_exemption_covers_only_a_lone_ssh_command():
     """`ssh host uptime; sudo …` presented a LOCAL sudo as remote.
 
@@ -852,6 +909,9 @@ EXTRA = [
     ("every delete in a chain is examined", t_every_delete_in_a_chain_is_examined),
     ("audit findings stay closed", t_audit_findings_stay_closed),
     ("audit fixes did not block ordinary work", t_audit_fixes_did_not_start_blocking_ordinary_work),
+    ("remote payloads are not local commands", t_remote_payloads_are_not_local_commands),
+    ("local half of a remote command stays local", t_local_half_of_a_remote_command_is_still_local),
+    ("no pattern is used before it is defined", t_an_empty_pattern_can_never_match_everything),
     ("ssh exemption covers only a lone ssh command", t_ssh_exemption_covers_only_a_lone_ssh_command),
     ("guard refuses when it cannot read the command", t_guard_refuses_when_it_cannot_read_the_command),
     ("whole-tree rule ignores prose", t_whole_tree_rule_ignores_prose),

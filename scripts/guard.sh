@@ -174,139 +174,11 @@ hitn() { printf '%s' "$norm" | grep -qE "$1"; }
 # casing let the lower-case spelling through.
 hitni() { printf '%s' "$norm" | grep -qiE "$1"; }
 
-# --- Segments: a command is a sequence of commands ---------------------------
-#
-# Every rule used to ask "does this TEXT contain a destructive verb, and does
-# this TEXT contain a protected path?" — two independent questions about the
-# whole string. That is wrong in both directions:
-#   `rm -rf /tmp/cache; echo ~/Documents`      denied, though nothing touches it
-#   `rm -rf node_modules; echo "never rm -rf /"` read as a root wipe
-# and it is why a verb in one command could be paired with a path in another.
-#
-# `seg_norm` emits one normalized segment per line, so each rule can ask both
-# questions about the SAME command. Separators inside quotes are masked before
-# splitting, because a quoted path may legitimately contain one — `rm -rf
-# "/tmp/x|marker" /` split at the `|`, and the real target `/` was discarded
-# with the phantom second half.
-SEP_SEMI=$'\002'; SEP_AMP=$'\003'; SEP_PIPE=$'\004'
-mask_quoted_separators() {
-  awk -v s="$SEP_SEMI" -v a="$SEP_AMP" -v p="$SEP_PIPE" '
-    {
-      out = ""; q = ""; prev = ""
-      for (i = 1; i <= length($0); i++) {
-        c = substr($0, i, 1)
-        if (q != "") {
-          if (c == q) q = ""
-          else if (c == ";") c = s
-          else if (c == "&") c = a
-          else if (c == "|") c = p
-        } else if (c == "\"" || c == "\047") q = c
-        # `>|` is bash-s clobber redirection, not a pipe. Splitting there put
-        # the redirection and its target in different segments, so the one
-        # spelling that force-overwrites even under noclobber was invisible.
-        else if (c == "|" && prev == ">") c = p
-        out = out c
-        prev = c
-      }
-      print out
-    }'
-}
-normalize_seg() {
-  tr -d '"\047\\' \
-    | sed -e 's/\${HOME}/~/g' \
-          -e 's/\$HOME/~/g' \
-          -e 's|~[a-zA-Z_][a-zA-Z0-9_.-]*/|~/|g' \
-          -e 's|/\./|/|g' \
-          -e 's|///*|/|g'
-}
-seg_norm() {
-  printf '%s' "$cmd" \
-    | mask_quoted_separators \
-    | tr ';&|' '\n\n\n' \
-    | tr "$SEP_SEMI$SEP_AMP$SEP_PIPE" ';&|' \
-    | normalize_seg
-  # `bash -c "rm -rf ~/Documents"` is one segment whose command word is `bash`,
-  # so a per-segment verb check saw an interpreter and stopped. The quoted
-  # argument IS a command line; emit its contents as segments too, so the verb
-  # inside gets read in command position like any other.
-  if printf '%s' "$cmd" | grep -qE "$EXECUTES_QUOTES"; then
-    printf '%s' "$cmd" \
-      | awk '
-          BEGIN { sq = sprintf("%c", 39); dq = sprintf("%c", 34) }
-          {
-            out = ""; cur = ""; inq = ""
-            for (i = 1; i <= length($0); i++) {
-              c = substr($0, i, 1)
-              if (inq == "") { if (c == sq || c == dq) { inq = c; cur = "" } }
-              else if (c == inq) { out = out " " cur; inq = "" }
-              else cur = cur c
-            }
-            if (out != "") print out
-          }' \
-      | tr ';&|' '\n\n\n' \
-      | normalize_seg
-  fi
-}
-
-# A verb only counts when it is in COMMAND POSITION — at the start of a
-# segment, not buried in an argument. This is what separates
-# `'rm' -rf ~/Documents` (quoting the command word hid the verb from every
-# rule) and `/bin/rm -rf …` (a path-qualified verb likewise) from
-# `git commit -m "… rm -rf ~/Documents …"`, where `rm` follows `-m` and is
-# prose. An optional leading directory is allowed so `/bin/rm` and `/usr/bin/dd`
-# are recognised for what they are.
-cmdpos() {
-  seg_norm | grep -qE "${LEAD}(/[^[:space:]]*/)?$1([[:space:]]|\$)"
-}
-
-# The targets of EVERY delete in the command, one per line.
-#
-# The old inline extraction used a greedy `.*[;&|]` to skip past everything
-# before the delete, which landed on the LAST delete in the command and
-# examined only that one. `rm -rf / && rm -rf ./build` was inspected at
-# `./build` and allowed — a wipe of the whole disk, at the default level.
-# Splitting on separators first means every delete is inspected on its own,
-# and `echo x | xargs rm -rf /` is reached too.
-#
-# Targets come from `norm` so quoted and $HOME-spelled paths still resolve;
-# whether a delete is being INVOKED is a separate question, answered by the
-# prose-aware `hitu` at each call site.
-# A segment whose command word is `rm`, directly or via `xargs`. Leading
-# VAR=value assignments and an absolute path to the binary are both allowed.
-# What may legitimately sit between the start of a segment and the real command
-# word. Getting this list wrong is a fail-open, not a cosmetic miss: with only
-# VAR=value assignments allowed, `sudo rm -rf /` had command word `sudo`, the
-# whole-tree rule never saw a delete, and a root wipe was allowed at the default
-# level. A cron schedule is five fields and then a command, and `crontab <<EOF`
-# bodies are read here too, so those fields count as lead-in as well.
-RUNNER='(sudo|doas|env|nohup|time|command|builtin|exec|nice|ionice|xargs)([[:space:]]+-[^[:space:]]+)*[[:space:]]+'
-CRONFIELD='([0-9*,/-]+[[:space:]]+){5}'
-LEAD="^[[:space:]]*(${CRONFIELD})?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+|${RUNNER})*"
-
-# When extraction failed there are no shell segments to speak of — `cmd` is the
-# raw JSON payload and every verb sits mid-line inside a quoted value. Command
-# position is meaningless there, so the anchor degrades to "anywhere", which is
-# what keeps the fallback over-blocking instead of going quiet.
-[ "$parsed" -eq 1 ] || LEAD='(^|[^a-zA-Z0-9_])'
-RM_CMDPOS="${LEAD}((/[^[:space:]]*/)?rm|xargs([[:space:]]+-[^[:space:]]+)*[[:space:]]+(/[^[:space:]]*/)?rm)([[:space:]]|\$)"
-
-DESTRUCTIVE_CMDPOS="${LEAD}(/[^[:space:]]*/)?(rm|unlink|truncate|shred|srm|find|xargs|chmod|chown)([[:space:]]|\$)"
-danger_segs="$(seg_norm | grep -E "$DESTRUCTIVE_CMDPOS")"
-hitd()  { printf '%s' "$danger_segs" | grep -qE  "$1"; }
-hitdi() { printf '%s' "$danger_segs" | grep -qiE "$1"; }
-
-rm_targets() {
-  # Redirections are removed as TOKENS, not by truncating the rest of the line.
-  # Truncating discarded every operand that followed one, so
-  # `rm -rf node_modules >/tmp/log /` was inspected as if `/` were not a target
-  # and a whole-disk wipe was allowed.
-  seg_norm \
-    | grep -E "$RM_CMDPOS" \
-    | sed -E 's/^(.*[^a-zA-Z0-9_])?rm[[:space:]]+//' \
-    | sed -E 's/[<>]+[[:space:]]*[^[:space:]]+//g' \
-    | tr ' \t' '\n\n'
-}
-
+# Defined HERE, above seg_norm, not beside the copy that uses it further
+# down. It used to sit below, so at the point seg_norm first ran it was an
+# empty string — and `grep -qE ""` matches every line, so the quoted-program
+# branch fired for every quoted command ever passed. An `ssh host 'rm -rf
+# ~/Documents'` had its REMOTE payload re-read as a local delete.
 # A second copy with quoted spans REMOVED, used to decide whether a
 # destructive verb is really being invoked.
 #
@@ -347,6 +219,176 @@ rm_targets() {
 # stripped as prose and were allowed. `[^|;&]*` keeps the search inside one
 # command so a `-c` in a later command cannot vouch for an earlier interpreter.
 EXECUTES_QUOTES="(^|[^a-zA-Z0-9_])(${INTERP})[[:space:]][^|;&]*(-[a-zA-Z]*[ce]|--command|--eval)([[:space:]]|\$)|(^|[^a-zA-Z0-9_])(${INTERP})[[:space:]]+([^|;&]*[[:space:]])?(-([[:space:]]|\$)|<<)|(^|[^a-zA-Z0-9_])eval([[:space:]]|\$)|do[[:space:]]+shell[[:space:]]+script"
+
+
+# A pattern that is empty matches everything. Every regex below is applied
+# with `grep -qE`, so one unset variable silently turns a targeted rule into
+# an always-true one. Assert the load-bearing ones exist before use.
+for _pat in INTERP EXECUTES_QUOTES; do
+  eval "_v=\${$_pat:-}"
+  [ -n "$_v" ] || {
+    echo "mac-it-guy-pro guard: internal error — $_pat is empty, which would make every pattern match. Refusing rather than running a guard that cannot discriminate." >&2
+    exit 2
+  }
+done
+
+# What may legitimately sit between the start of a segment and the real command
+# word. Getting this list wrong is a fail-open, not a cosmetic miss: with only
+# VAR=value assignments allowed, `sudo rm -rf /` had command word `sudo`, the
+# whole-tree rule never saw a delete, and a root wipe was allowed at the default
+# level. A cron schedule is five fields and then a command, and `crontab <<EOF`
+# bodies are read here too, so those fields count as lead-in as well.
+RUNNER='(sudo|doas|env|nohup|time|command|builtin|exec|nice|ionice|xargs)([[:space:]]+-[^[:space:]]+)*[[:space:]]+'
+CRONFIELD='([0-9*,/-]+[[:space:]]+){5}'
+LEAD="^[[:space:]]*(${CRONFIELD})?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+|${RUNNER})*"
+
+# When extraction failed there are no shell segments to speak of — `cmd` is the
+# raw JSON payload and every verb sits mid-line inside a quoted value. Command
+# position is meaningless there, so the anchor degrades to "anywhere", which is
+# what keeps the fallback over-blocking instead of going quiet.
+[ "$parsed" -eq 1 ] || LEAD='(^|[^a-zA-Z0-9_])'
+RM_CMDPOS="${LEAD}((/[^[:space:]]*/)?rm|xargs([[:space:]]+-[^[:space:]]+)*[[:space:]]+(/[^[:space:]]*/)?rm)([[:space:]]|\$)"
+
+# The quoted argument to these runs somewhere this guard does not reach.
+REMOTE_PAYLOAD='^[[:space:]]*(/[^[:space:]]*/)?(ssh|scp|rsync)([[:space:]]|$)'
+
+# --- Segments: a command is a sequence of commands ---------------------------
+#
+# Every rule used to ask "does this TEXT contain a destructive verb, and does
+# this TEXT contain a protected path?" — two independent questions about the
+# whole string. That is wrong in both directions:
+#   `rm -rf /tmp/cache; echo ~/Documents`      denied, though nothing touches it
+#   `rm -rf node_modules; echo "never rm -rf /"` read as a root wipe
+# and it is why a verb in one command could be paired with a path in another.
+#
+# `seg_norm` emits one normalized segment per line, so each rule can ask both
+# questions about the SAME command. Separators inside quotes are masked before
+# splitting, because a quoted path may legitimately contain one — `rm -rf
+# "/tmp/x|marker" /` split at the `|`, and the real target `/` was discarded
+# with the phantom second half.
+SEP_SEMI=$'\002'; SEP_AMP=$'\003'; SEP_PIPE=$'\004'
+mask_quoted_separators() {
+  awk -v s="$SEP_SEMI" -v a="$SEP_AMP" -v p="$SEP_PIPE" '
+    BEGIN { q = "" }   # quote state persists ACROSS lines, like the shell
+    {
+      out = ""; prev = ""
+      for (i = 1; i <= length($0); i++) {
+        c = substr($0, i, 1)
+        if (q != "") {
+          if (c == q) q = ""
+          else if (c == ";") c = s
+          else if (c == "&") c = a
+          else if (c == "|") c = p
+        } else if (c == "\"" || c == "\047") q = c
+        # `>|` is bash-s clobber redirection, not a pipe. Splitting there put
+        # the redirection and its target in different segments, so the one
+        # spelling that force-overwrites even under noclobber was invisible.
+        else if (c == "|" && prev == ">") c = p
+        out = out c
+        prev = c
+      }
+      print out
+    }'
+}
+normalize_seg() {
+  tr -d '"\047\\' \
+    | sed -e 's/\${HOME}/~/g' \
+          -e 's/\$HOME/~/g' \
+          -e 's|~[a-zA-Z_][a-zA-Z0-9_.-]*/|~/|g' \
+          -e 's|/\./|/|g' \
+          -e 's|///*|/|g'
+}
+seg_norm() {
+  printf '%s' "$cmd" \
+    | mask_quoted_separators \
+    | tr ';&|' '\n\n\n' \
+    | tr "$SEP_SEMI$SEP_AMP$SEP_PIPE" ';&|' \
+    | normalize_seg
+  # `bash -c "rm -rf ~/Documents"` is one segment whose command word is `bash`,
+  # so a per-segment verb check saw an interpreter and stopped. The quoted
+  # argument IS a command line; emit its contents as segments too, so the verb
+  # inside gets read in command position like any other.
+  # ...but NOT when the quoted argument is bound for another machine. `ssh host
+  # 'rm -rf ~/Documents'` deletes the REMOTE home folder; this guard defends
+  # this Mac, has no standing over the far end, and cannot see it. Everything
+  # outside the quotes stays local and stays checked — a redirect into
+  # ~/Documents still truncates a local file, whoever the command talks to.
+  #
+  # Written as an ordered chain rather than one boolean, because the three
+  # cases genuinely rank: an ssh option that runs HERE beats the fact that the
+  # command is an ssh command, which in turn beats the generic interpreter test
+  # (`ssh` is not an interpreter, so that test would have said "no payload" and
+  # silently dropped ProxyCommand coverage).
+  emit_quoted=0
+  if printf '%s' "$cmd" | grep -qiE '(proxy|local)command'; then
+    emit_quoted=1          # the option's value is a program, and it runs here
+  elif printf '%s' "$cmd" | grep -qE "$REMOTE_PAYLOAD"; then
+    emit_quoted=0          # the quoted argument runs on the far end
+  elif printf '%s' "$cmd" | grep -qE "$EXECUTES_QUOTES"; then
+    emit_quoted=1          # a local interpreter was handed a program
+  fi
+  if [ "$emit_quoted" -eq 1 ]; then
+    printf '%s' "$cmd" \
+      | awk '
+          BEGIN { sq = sprintf("%c", 39); dq = sprintf("%c", 34); inq = "" }
+          {
+            out = ""; cur = ""
+            for (i = 1; i <= length($0); i++) {
+              c = substr($0, i, 1)
+              if (inq == "") { if (c == sq || c == dq) { inq = c; cur = "" } }
+              else if (c == inq) { out = out " " cur; inq = "" }
+              else cur = cur c
+            }
+            if (out != "") print out
+          }' \
+      | tr ';&|' '\n\n\n' \
+      | normalize_seg
+  fi
+}
+
+# A verb only counts when it is in COMMAND POSITION — at the start of a
+# segment, not buried in an argument. This is what separates
+# `'rm' -rf ~/Documents` (quoting the command word hid the verb from every
+# rule) and `/bin/rm -rf …` (a path-qualified verb likewise) from
+# `git commit -m "… rm -rf ~/Documents …"`, where `rm` follows `-m` and is
+# prose. An optional leading directory is allowed so `/bin/rm` and `/usr/bin/dd`
+# are recognised for what they are.
+cmdpos() {
+  seg_norm | grep -qE "${LEAD}(/[^[:space:]]*/)?$1([[:space:]]|\$)"
+}
+
+# The targets of EVERY delete in the command, one per line.
+#
+# The old inline extraction used a greedy `.*[;&|]` to skip past everything
+# before the delete, which landed on the LAST delete in the command and
+# examined only that one. `rm -rf / && rm -rf ./build` was inspected at
+# `./build` and allowed — a wipe of the whole disk, at the default level.
+# Splitting on separators first means every delete is inspected on its own,
+# and `echo x | xargs rm -rf /` is reached too.
+#
+# Targets come from `norm` so quoted and $HOME-spelled paths still resolve;
+# whether a delete is being INVOKED is a separate question, answered by the
+# prose-aware `hitu` at each call site.
+# A segment whose command word is `rm`, directly or via `xargs`. Leading
+# VAR=value assignments and an absolute path to the binary are both allowed.
+
+DESTRUCTIVE_CMDPOS="${LEAD}(/[^[:space:]]*/)?(rm|unlink|truncate|shred|srm|find|xargs|chmod|chown)([[:space:]]|\$)"
+danger_segs="$(seg_norm | grep -E "$DESTRUCTIVE_CMDPOS")"
+hitd()  { printf '%s' "$danger_segs" | grep -qE  "$1"; }
+hitdi() { printf '%s' "$danger_segs" | grep -qiE "$1"; }
+
+rm_targets() {
+  # Redirections are removed as TOKENS, not by truncating the rest of the line.
+  # Truncating discarded every operand that followed one, so
+  # `rm -rf node_modules >/tmp/log /` was inspected as if `/` were not a target
+  # and a whole-disk wipe was allowed.
+  seg_norm \
+    | grep -E "$RM_CMDPOS" \
+    | sed -E 's/^(.*[^a-zA-Z0-9_])?rm[[:space:]]+//' \
+    | sed -E 's/[<>]+[[:space:]]*[^[:space:]]+//g' \
+    | tr ' \t' '\n\n'
+}
+
 # ...and it must not be applied at all when extraction FAILED.
 #
 # On the fallback path `cmd` is the raw JSON payload, where the whole command
