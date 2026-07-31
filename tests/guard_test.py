@@ -153,6 +153,12 @@ def t_prose_describing_a_delete_is_not_a_delete():
     wrongly_denied = [c for c in allowed if guard(c).returncode == 2]
     assert not wrongly_denied, (
         "prose about deleting was treated as deleting:\n  " + "\n  ".join(wrongly_denied))
+    # Nor should it prompt. The ask tier read the raw command too, so writing
+    # about a recursive delete raised a confirmation dialog for a command that
+    # was never going to run — noise that teaches people to approve blindly.
+    wrongly_asked = [c for c in allowed if '"ask"' in guard(c).stdout]
+    assert not wrongly_asked, (
+        "prose about deleting raised a prompt:\n  " + "\n  ".join(wrongly_asked))
 
 
 def t_quoting_still_does_not_hide_a_real_delete():
@@ -226,6 +232,13 @@ def t_quoted_span_carveout_is_not_a_bypass():
     ]:
         assert guard(cmd).returncode == 2, (
             f"a real command hidden in a quoted -c argument was not denied: {cmd}")
+    # ssh options run their value on THIS machine, so a quoted sudo there is
+    # local escalation. ssh accepts any casing for option names, and a guard
+    # that recognised only one spelling would be bypassed by typing another.
+    for opt in ("ProxyCommand", "proxycommand", "PROXYCOMMAND", "LocalCommand"):
+        cmd = f"ssh -o {opt}='sudo nc %h %p' admin@192.0.2.10 'uptime'"
+        assert guard(cmd).returncode == 2, (
+            f"a quoted sudo in an ssh option was not denied: {cmd}")
 
 
 def t_tier1_rules_also_ignore_prose():
@@ -243,6 +256,16 @@ def t_tier1_rules_also_ignore_prose():
         'echo "csrutil must stay enabled"',
         'git commit -m "document that tmutil delete is out of bounds"',
         'echo "mkfs is refused by the guard"',
+        # The prose carve-out was applied to some Tier-1 rules and not others,
+        # so these eight stayed false positives long after the fix landed.
+        'git commit -m "explain why dd if=x of=/dev/disk2 is denied"',
+        'git commit -m "sudo is never run by the agent"',
+        'echo "redirecting > /dev/disk is out of bounds"',
+        'git commit -m "shred and srm are refused"',
+        'echo "a fork bomb is :(){ :|: };: and is blocked"',
+        'git commit -m "chmod -R 777 /System breaks the OS"',
+        'git commit -m "launchctl bootout system is out of bounds"',
+        'echo "rm on ~/.Trash is refused; only the user empties it"',
     ]
     wrongly_denied = [c for c in allowed if guard(c).returncode == 2]
     assert not wrongly_denied, (
@@ -260,9 +283,23 @@ def t_tier1_rules_still_deny_the_real_thing():
         "tmutil delete /Volumes/TM/Backups.backupdb/old",
         "mkfs.ext4 /dev/disk2",
         "nvram boot-args=x",
+        # every rule converted to the prose-aware matcher, still denying
+        "dd if=/dev/zero of=/dev/disk2",
+        "sudo apt-get install x",
+        "cat img.iso > /dev/disk2",
+        "shred -u ~/secret.txt",
+        ":(){ :|:& };:",
+        "chmod -R 777 /System",
+        "launchctl bootout system/com.apple.something",
+        "rm -rf ~/.Trash/*",
         # and executed through a quoted shell argument
         'bash -c "shutdown -h now"',
         "sh -c 'csrutil disable'",
+        'bash -c "dd if=x of=/dev/disk2"',
+        "sh -c 'sudo rm /etc/hosts'",
+        # or handed to an interpreter on stdin rather than with -c
+        "bash <<EOF\nsudo rm /etc/hosts\nEOF",
+        "python3 - <<'PY'\nimport os; os.system('rm -rf ~/Documents')\nPY",
     ]:
         assert guard(cmd).returncode == 2, f"a Tier-1 rule stopped denying: {cmd}"
 
@@ -359,6 +396,42 @@ def t_root_rule_does_not_swallow_ordinary_paths():
         "the root rule swallowed ordinary paths:\n  " + "\n  ".join(wrongly_denied))
 
 
+def t_delete_targets_end_where_the_delete_does():
+    """A delete's target list must stop at the next command separator.
+
+    It ran to end of line instead, so the arguments of everything that
+    followed counted as delete targets: `rm -rf /tmp/x && mkdir -p /tmp/x/bin;
+    for d in /bin /usr/bin` was denied for "deleting /bin", which appears only
+    as an argument to a later loop. This blocked real work.
+    """
+    # None of these deletes a system tree, so none may be DENIED. Deleting an
+    # unrecognised path still prompts at `strict` — that is the ask tier doing
+    # its job, and is not what this test is about.
+    not_a_wipe = [
+        "rm -rf /tmp/nojxa && mkdir -p /tmp/nojxa/bin",
+        "rm -rf /tmp/x && for d in /bin /usr/bin; do echo $d; done",
+        "rm -rf ./build && ls /System/Library/Fonts",
+        "rm -rf node_modules && du -sh /usr/local",
+        "rm -rf /tmp/a; cp -R /Applications/Foo.app /tmp/b",
+    ]
+    wrongly_denied = [c for c in not_a_wipe if guard(c).returncode == 2]
+    assert not wrongly_denied, (
+        "a later command's arguments were read as delete targets:\n  "
+        + "\n  ".join(wrongly_denied))
+
+    # Build output followed by another command must still not even prompt.
+    quiet = ["rm -rf ./build && ls /System/Library/Fonts",
+             "rm -rf node_modules && du -sh /usr/local"]
+    noisy = [c for c in quiet if '"ask"' in guard(c).stdout]
+    assert not noisy, (
+        "a trailing command re-armed the prompt on build output:\n  " + "\n  ".join(noisy))
+
+    # ...and the real thing in the same shape is still caught.
+    for cmd in ["cd /tmp && rm -rf /", "echo start; rm -rf /System",
+                "mkdir /tmp/x && rm -rf /Users"]:
+        assert guard(cmd).returncode == 2, f"truncation hid a real wipe: {cmd}"
+
+
 def t_default_level_is_data():
     """Unset means the shipped default, and the shipped default is `data`.
 
@@ -413,6 +486,94 @@ def t_every_block_names_the_level_and_the_way_out():
                 f"block for {cmd!r} at {level} offers no way out: {msg[:160]}")
 
 
+HD_DANGEROUS = "rm -rf ~/Documents"
+
+
+def t_multiline_quoted_prose_is_still_prose():
+    """A multi-line commit message is the ordinary way to write one.
+
+    `sed` works per line, so a quoted span crossing a newline was never
+    stripped: the single-line form `git commit -m "denies rm -rf ~/Documents"`
+    was allowed while the identical multi-line body was denied. Same string,
+    same meaning, opposite verdict — and this one bit at the default level.
+    """
+    allowed = [
+        f"git commit -m 'first line\n\nthe guard denies {HD_DANGEROUS}\n'",
+        f'git commit -m "first line\n\nthe guard denies {HD_DANGEROUS}\n"',
+        'git commit -m "v2 notes\n\ncovers diskutil eraseDisk and dd to /dev/disk\n"',
+    ]
+    wrongly_denied = [c for c in allowed if guard(c).returncode == 2]
+    assert not wrongly_denied, (
+        "multi-line prose was treated as a command:\n  " + "\n  ".join(wrongly_denied))
+
+
+def t_multiline_join_does_not_hide_a_real_delete():
+    """Joining lines must not let a quoted span swallow the command between."""
+    for cmd in [
+        f'echo "a"\n{HD_DANGEROUS}\necho "b"',
+        f'echo "docs mention it"\n{HD_DANGEROUS}',
+        f'cd /tmp\n{HD_DANGEROUS}\necho done',
+        f'echo "x\n" ; {HD_DANGEROUS} ; echo "\ny"',
+        f'bash -c "echo a\n{HD_DANGEROUS}"',
+    ]:
+        assert guard(cmd).returncode == 2, (
+            f"the multi-line join hid a real delete: {cmd!r}")
+
+
+def t_heredoc_body_is_prose_when_nothing_executes_it():
+    """Writing a document that mentions a dangerous command is not running it.
+
+    `cat > notes.md <<'EOF' … EOF` writes a file. The quoted-span carve-out
+    cannot help, because a heredoc body carries no quotes — so documenting a
+    command read exactly like issuing it. This blocked writing an ordinary
+    text file, and blocked this plugin's own release commit.
+    """
+    allowed = [
+        f"cat > /tmp/notes.md <<'EOF'\nthe guard denies {HD_DANGEROUS}\nEOF",
+        "cat > /tmp/q.txt <<'EOF'\nrules cover mkfs, diskutil erase and dd\nEOF",
+        "cat > /tmp/m.txt <<EOF\nnever run csrutil disable on a Mac\nEOF",
+        "tee /tmp/x.md <<'MSG'\nshutdown -h now is out of bounds\nMSG",
+        "cat > /tmp/c.txt <<-'EOF'\n\ttmutil delete is refused\n\tEOF",
+    ]
+    wrongly_denied = [c for c in allowed if guard(c).returncode == 2]
+    assert not wrongly_denied, (
+        "heredoc prose was treated as a command:\n  " + "\n  ".join(wrongly_denied))
+
+
+def t_heredoc_carveout_is_not_a_bypass():
+    """Everything that EXECUTES what it reads must keep its body scanned."""
+    for cmd in [
+        # the interpreter reads the body directly
+        f"bash <<EOF\n{HD_DANGEROUS}\nEOF",
+        f"sh <<'EOF'\n{HD_DANGEROUS}\nEOF",
+        f"zsh <<EOF\n{HD_DANGEROUS}\nEOF",
+        f"python3 - <<'PY'\nimport os; os.system('{HD_DANGEROUS}')\nPY",
+        # the body is piped into one
+        f"cat <<'EOF' | bash\n{HD_DANGEROUS}\nEOF",
+        f"cat <<'EOF' | sh -s\n{HD_DANGEROUS}\nEOF",
+        # sent to a machine where this guard cannot follow
+        f"ssh host <<'EOF'\n{HD_DANGEROUS}\nEOF",
+        # written now, run later in the same command
+        f"cat > /tmp/x.sh <<'EOF'\n{HD_DANGEROUS}\nEOF\nbash /tmp/x.sh",
+        # scheduled rather than run
+        f"crontab <<'EOF'\n0 3 * * * {HD_DANGEROUS}\nEOF",
+        # unterminated: the body would otherwise swallow the real command
+        f"cat > /tmp/x.sh <<'EOF'\n{HD_DANGEROUS}\nbash /tmp/x.sh",
+    ]:
+        assert guard(cmd).returncode == 2, (
+            f"a real command hidden in a heredoc body was not denied: {cmd!r}")
+
+
+def t_heredoc_carveout_does_not_hide_the_command_line_itself():
+    """Only the body is data. The command around it is still a command."""
+    for cmd in [
+        f"{HD_DANGEROUS} && cat > /tmp/n.md <<'EOF'\nnotes\nEOF",
+        "cat > ~/Documents/notes.md <<'EOF'\nhello\nEOF\nrm -rf ~/Documents/old",
+    ]:
+        assert guard(cmd).returncode == 2, (
+            f"the carve-out swallowed a real command: {cmd!r}")
+
+
 def _sandbox_without_jxa():
     """A PATH holding the guard's tools but no osascript, so JXA extraction fails."""
     import shutil
@@ -420,7 +581,10 @@ def _sandbox_without_jxa():
     d = tempfile.mkdtemp(prefix="nojxa-")
     binp = os.path.join(d, "bin")
     os.makedirs(binp)
-    for tool in ("bash", "cat", "tr", "sed", "grep", "wc", "head", "cut"):
+    # awk included deliberately: the guard refuses outright if any helper is
+    # missing, so a sandbox without it would make every assertion below pass
+    # for the wrong reason — the guard never reaching a single rule.
+    for tool in ("bash", "cat", "tr", "sed", "grep", "awk", "wc", "head", "cut"):
         for base in ("/bin", "/usr/bin"):
             src = os.path.join(base, tool)
             if os.path.exists(src):
@@ -455,6 +619,16 @@ def t_payload_parse_failure_over_blocks_rather_than_under_blocks():
         "rm -f ~/Downloads/../Documents/tax-return.pdf",
         "rm -rf /",
     ]
+    # Prove the sandbox is exercising the rules, not the missing-helper refusal.
+    ok = json.dumps({"session_id": "test", "tool_name": "Bash",
+                     "tool_input": {"command": "ls -la /tmp", "description": "x"}})
+    sane = subprocess.run(
+        ["/bin/bash", GUARD], input=ok, capture_output=True, text=True, timeout=30,
+        env=dict(os.environ, PATH=binp, ITGUY_GUARD="strict"))
+    assert sane.returncode == 0, (
+        f"sandbox blocks even an innocent command, so this test proves nothing: "
+        f"{sane.stderr.strip()[:160]}")
+
     leaked = []
     for cmd in must_still_block:
         payload = json.dumps({"session_id": "test", "tool_name": "Bash",
@@ -539,8 +713,14 @@ EXTRA = [
     ("default level is data", t_default_level_is_data),
     ("whole-disk destruction denied at every level", t_whole_disk_destruction_is_denied_at_every_level),
     ("root rule does not swallow ordinary paths", t_root_rule_does_not_swallow_ordinary_paths),
+    ("delete targets end where the delete does", t_delete_targets_end_where_the_delete_does),
     ("every block names the level and the way out", t_every_block_names_the_level_and_the_way_out),
     ("payload parse failure over-blocks, never under-blocks", t_payload_parse_failure_over_blocks_rather_than_under_blocks),
+    ("multi-line quoted prose is still prose", t_multiline_quoted_prose_is_still_prose),
+    ("multi-line join does not hide a real delete", t_multiline_join_does_not_hide_a_real_delete),
+    ("heredoc body is prose when nothing executes it", t_heredoc_body_is_prose_when_nothing_executes_it),
+    ("heredoc carve-out is not a bypass", t_heredoc_carveout_is_not_a_bypass),
+    ("heredoc carve-out does not hide the command line", t_heredoc_carveout_does_not_hide_the_command_line_itself),
     ("level off disables everything", t_level_off_disables_everything),
     ("unknown level falls back to strict", t_unknown_level_falls_back_to_strict),
     ("tier-1 rules still deny the real thing", t_tier1_rules_still_deny_the_real_thing),

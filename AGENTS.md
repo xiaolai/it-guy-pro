@@ -44,6 +44,38 @@ bash -n scripts/guard.sh && bash -n scripts/profile-digest.sh && bash -n scripts
 
 Claims in skills carry dates. Anything older than three months is re-verified before it is quoted to a user, and prices and provider policies are checked against the provider's own page rather than recalled.
 
+## Which matcher a new guard rule should use
+
+`guard.sh` keeps three copies of the command, and picking the wrong one is the
+most repeated mistake in this file's history.
+
+| Copy | Helper | Use it for |
+|------|--------|-----------|
+| `norm` | `hitn` | Path matching — quotes stripped, `$HOME`/`~` unified, separators collapsed |
+| `unq` | `hitu` / `hitui` | "Is this verb being invoked?" — quoted spans removed, so prose about a command is not the command |
+| `cmd` | `hit` / `hiti` | Only when the raw text matters |
+
+Default to `hitu`. The prose carve-out was added in v1.6.1 but applied to only
+some rules, so eight Tier-1 denials and eleven ask rules kept reading raw text
+for two more versions: writing `dd`, `sudo`, `shred` or `chmod -R` in a commit
+message was denied as though it were being run.
+
+Three exceptions, all deliberate, all with a comment at the rule:
+
+- the three pipe-an-installer-into-a-shell asks stay on `hit`, because
+  `ssh host 'bash <(curl …)'` is real and prose containing a literal pipeline
+  is not;
+- the remote-sudo ask stays on `hit`, because the sudo it looks for is inside
+  ssh's quoted argument by construction;
+- anything listed in `EXECUTES_QUOTES` — `bash -c`, `python3 -`, an interpreter
+  fed by heredoc, `ProxyCommand=` — disables the carve-out entirely, because
+  there the quoted string *is* a program.
+
+A rule that extracts targets must also truncate at the next command separator.
+Without it the target list runs to end of line and reads the arguments of
+later commands as its own: `rm -rf /tmp/x && mkdir -p /tmp/x/bin` was denied
+in v1.8.0 for "deleting /bin".
+
 ## Never hand-edit ~/ITGuy
 
 `scripts/state.sh` is the only sanctioned writer. It holds a lock, writes atomically, performs demotion as a three-file transaction, and refuses to commit a profile the linter rejects. Editing that state directly races other sessions and skips validation.

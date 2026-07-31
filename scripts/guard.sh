@@ -35,6 +35,17 @@
 # handed. No rule in this file globs on purpose.
 set -f
 
+# Every rule below is a `grep`, run through `sed`/`tr`/`awk` helpers. If any of
+# them is missing, `hit` returns 127 — non-zero — and every rule silently
+# decides "no match", so the guard allows everything while looking healthy.
+# That is the one failure mode a guard may not have. Fail loud instead.
+for _tool in grep sed tr awk wc; do
+  command -v "$_tool" >/dev/null 2>&1 || {
+    echo "mac-it-guy-pro guard: cannot run — '$_tool' is not on PATH, so no safety rule can be evaluated. Refusing rather than allowing every command unchecked." >&2
+    exit 2
+  }
+done
+
 payload="$(cat)"
 
 # --- Extract tool_input.command precisely via JXA (ships on every Mac). ---
@@ -60,6 +71,62 @@ fi
 # any word. Deliberately not `tr -d` — deleting them would fuse adjacent
 # tokens into one and lose boundaries the other way.
 [ -n "$cmd" ] || { parsed=0; cmd="$(printf '%s' "$payload" | tr '"' ' ')"; }
+
+# --- A heredoc body is data, not a command ---------------------------------
+#
+# `cat > notes.md <<'EOF' … EOF` writes a file. Its body is prose, but every
+# rule here read it as command text, so documenting a dangerous command was
+# denied as though it were being run. The quoted-span carve-out below does not
+# help, because a heredoc body carries no quotes. This blocked writing an
+# ordinary text file, and blocked this plugin's own release commit.
+#
+# Removing the body is only safe when nothing executes it, and plenty of things
+# do: `bash <<EOF`, `python3 - <<PY`, `ssh host <<EOF`, `crontab <<EOF`, and
+# `cat <<EOF | sh` all run what they read. So the body is removed FIRST, and
+# the carve-out is then abandoned unless what REMAINS — the command itself plus
+# anything after the terminator — names no interpreter, has no pipe, and has no
+# command substitution. `cat <<EOF > f` followed by `bash f` keeps its body,
+# because the `bash` survives the removal and re-arms the check.
+#
+# Note this grants nothing new: `echo "rm -rf ~/Documents" > f` is already
+# allowed today by the quoted-span carve-out. Writing a dangerous string to a
+# file was never the blocked step; executing it is, and that stays blocked.
+HEREDOC_EXECUTES='(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno|ssh|scp|osascript|env|xargs|eval|source|crontab|at|sudo|doas)([[:space:]]|$)|\||\$\(|`|(^|[^a-zA-Z0-9_])\.[[:space:]]'
+case "$cmd" in
+  *'<<'*)
+    nohd="$(printf '%s\n' "$cmd" | awk '
+      # A herestring is not a heredoc; hide it before scanning for openers.
+      function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+      {
+        if (delim != "") {                 # inside a body: drop the line
+          if (trim($0) == delim) delim = ""
+          next
+        }
+        det = $0
+        gsub(/<<</, "\001", det)
+        while (match(det, /<<-?[ \t]*[^ \t|;&<>()]+/)) {
+          tok = substr(det, RSTART, RLENGTH)
+          det = substr(det, RSTART + RLENGTH)
+          d = tok
+          sub(/^<<-?[ \t]*/, "", d)
+          gsub("[\047\042]", "", d)
+          if (d != "") delim = d
+        }
+        print
+      }
+      # An unterminated heredoc would swallow every following line, including a
+      # real command. Refuse the carve-out rather than hide one.
+      END { if (delim != "") exit 3 }
+    ')"
+    # Written as an explicit if, not `a && b || c`: with the short-circuit form,
+    # awk exiting 3 for an unterminated heredoc skipped the grep and fell
+    # straight into the `||` branch, applying the carve-out in exactly the case
+    # it must not be applied.
+    if [ $? -eq 0 ] && ! printf '%s' "$nohd" | grep -qE "$HEREDOC_EXECUTES"; then
+      cmd="$nohd"
+    fi
+    ;;
+esac
 
 # Normalized copy, used ONLY for protected-path matching.
 #
@@ -108,7 +175,13 @@ hitn() { printf '%s' "$norm" | grep -qE "$1"; }
 # argument is a program. The legitimate argv-form Trash recipe also uses it,
 # and still passes — it contains no destructive verb, so treating its text as
 # code changes nothing about the verdict.
-EXECUTES_QUOTES='(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno)[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*-[a-zA-Z]*[ce]([[:space:]]|$)|(^|[^a-zA-Z0-9_])eval([[:space:]]|$)|do[[:space:]]+shell[[:space:]]+script|(^|[^a-zA-Z0-9_])osascript[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*-e([[:space:]]|$)'
+# `-c`/`-e` is not the only way to hand an interpreter a program. `python3 -`
+# and `bash <<PY` read one from stdin, and the guard did not recognise either:
+# a delete sitting inside quotes in such a program had its quoted span stripped
+# like prose, so `python3 - <<PY … os.system('rm -rf ~/Documents') … PY` reached
+# only the ask tier — and ask is off at the default level, so it was allowed.
+# An interpreter followed by a bare `-` or a heredoc is executing what follows.
+EXECUTES_QUOTES='(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno)[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*-[a-zA-Z]*[ce]([[:space:]]|$)|(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno)[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(-([[:space:]]|$)|<<)|(^|[^a-zA-Z0-9_])eval([[:space:]]|$)|do[[:space:]]+shell[[:space:]]+script|(^|[^a-zA-Z0-9_])osascript[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*-e([[:space:]]|$)'
 # ...and it must not be applied at all when extraction FAILED.
 #
 # On the fallback path `cmd` is the raw JSON payload, where the whole command
@@ -120,10 +193,28 @@ EXECUTES_QUOTES='(^|[^a-zA-Z0-9_])((ba|z|k|da)?sh|python3?|perl|ruby|node|deno)[
 # fallback over-blocks; it under-blocked, which is the one direction a guard
 # must never fail in. Skipping the carve-out restores the documented
 # behaviour: no extraction, no prose exemption.
-if [ "$parsed" -eq 0 ] || printf '%s' "$cmd" | grep -qE "$EXECUTES_QUOTES"; then
+# `ssh -o ProxyCommand='sudo nc %h %p'` belongs here for the same reason as
+# `bash -c`: the quoted value is a program, and ProxyCommand/LocalCommand run
+# it on THIS machine, so a sudo inside them is local escalation in an ssh
+# costume. Matched case-insensitively because ssh accepts any casing for
+# option names, and a guard that only recognised one spelling would be
+# bypassed by typing another.
+if [ "$parsed" -eq 0 ] \
+  || printf '%s' "$cmd" | grep -qE "$EXECUTES_QUOTES" \
+  || printf '%s' "$cmd" | grep -qiE '(proxy|local)command'; then
   unq="$cmd"
 else
-  unq="$(printf '%s' "$cmd" | sed -e "s/'[^']*'//g" -e 's/"[^"]*"//g')"
+  # Joined onto one line first, because `sed` works per line and a quoted span
+  # may not. A multi-line commit message — the ordinary way to write one — had
+  # only its individual lines examined, so a body mentioning a recursive delete
+  # was denied while the single-line form was allowed. Same string, same
+  # meaning, opposite verdict.
+  #
+  # This does not widen the carve-out: `[^"]*` still cannot cross a quote, so
+  # `echo "a"` / `rm -rf ~/Documents` / `echo "b"` on three lines strips the two
+  # echoes and leaves the delete exposed, exactly as before.
+  unq="$(printf '%s' "$cmd" | tr '\n' '\001' \
+    | sed -e "s/'[^']*'//g" -e 's/"[^"]*"//g' | tr '\001' '\n')"
 fi
 hitu()  { printf '%s' "$unq" | grep -qE  "$1"; }
 hitui() { printf '%s' "$unq" | grep -qiE "$1"; }
@@ -215,10 +306,10 @@ if [ "$newlines" -eq 0 ] && hit '^[[:space:]]*ssh[[:space:]]' && ! hiti '(proxyc
     "This runs sudo on the remote server, not on this Mac. Confirm the target host with the user, and remember the guard cannot protect the far end."
 fi
 
-policy_on && hit '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && deny \
+policy_on && hitu '(^|[^a-zA-Z0-9_])sudo[[:space:]]' && deny \
   "sudo is never run by the agent. Give the user the exact command to run themselves (tell them to type '! <command>' in the prompt) plus a one-sentence plain-language explanation of what it does."
 
-hit '(^|[^a-zA-Z0-9_./-])dd[[:space:]]' && deny \
+hitu '(^|[^a-zA-Z0-9_./-])dd[[:space:]]' && deny \
   "dd can silently destroy a disk. Use a purpose-specific tool instead and explain the goal to the user first."
 
 hitu '(^|[^a-zA-Z0-9_])(mkfs|newfs_[a-z]+)' && deny \
@@ -227,19 +318,19 @@ hitu '(^|[^a-zA-Z0-9_])(mkfs|newfs_[a-z]+)' && deny \
 hitu 'diskutil[[:space:]]+(erase[a-zA-Z]*|reformat|partitionDisk|zeroDisk|secureErase)|diskutil[[:space:]]+apfs[[:space:]]+(delete|erase)|asr[[:space:]]+restore' && deny \
   "Disk erase/partition/restore is out of bounds. If genuinely needed, walk the user through Disk Utility step by step instead."
 
-hit '>+[[:space:]]*/dev/(disk|rdisk)' && deny \
+hitu '>+[[:space:]]*/dev/(disk|rdisk)' && deny \
   "Writing to raw disk devices is out of bounds."
 
-hit '(^|[^a-zA-Z0-9_])(shred|srm)[[:space:]]' && deny \
+hitu '(^|[^a-zA-Z0-9_])(shred|srm)[[:space:]]' && deny \
   "Secure-erase tools are out of bounds — deletions go to the Trash so the user can undo them."
 
-hit ':\(\)[[:space:]]*\{[[:space:]]*:\|:' && deny \
+hitu ':\(\)[[:space:]]*\{[[:space:]]*:\|:' && deny \
   "Fork bomb pattern."
 
-hit '(chmod|chown)[[:space:]]+-[a-zA-Z]*R' && hit '(/System|/Library|/usr|/bin|/sbin|/etc|/var|[[:space:]]/[[:space:]"'\'']*$|[[:space:]]/$|[[:space:]]~[[:space:]]*$|\$HOME[[:space:]]*$)' && deny \
+hitu '(chmod|chown)[[:space:]]+-[a-zA-Z]*R' && hitu '(/System|/Library|/usr|/bin|/sbin|/etc|/var|[[:space:]]/[[:space:]"'\'']*$|[[:space:]]/$|[[:space:]]~[[:space:]]*$|\$HOME[[:space:]]*$)' && deny \
   "Recursive permission changes on system or home directories break macOS in ways that need a reinstall to fix."
 
-policy_on && hit 'launchctl[[:space:]]+(bootout[[:space:]]+system|unload[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(/System|/Library/LaunchDaemons))' && deny \
+policy_on && hitu 'launchctl[[:space:]]+(bootout[[:space:]]+system|unload[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(/System|/Library/LaunchDaemons))' && deny \
   "Unloading system daemons is out of bounds. For startup items, work only on the user's own LaunchAgents and explain each one first."
 
 policy_on && hitu '(^|[^a-zA-Z0-9_])csrutil' && deny \
@@ -257,7 +348,7 @@ hitu 'tmutil[[:space:]]+(delete|disable)' && deny \
 hitui 'empty[[:space:]]+(the[[:space:]]+)?trash' && deny \
   "Only the user empties the Trash. Tell them what is in it, how much space it frees, and let them do it in Finder (Finder > Empty Trash)."
 
-hit '\.Trash' && hit '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
+hitu '\.Trash' && hitu '(^|[^a-zA-Z0-9_])rm[[:space:]]' && deny \
   "Only the user empties the Trash. Tell them how much space it would free and let them do it in Finder."
 
 # ---------- Tier 1.5: destructive commands with unresolvable targets ----------
@@ -279,7 +370,7 @@ if hitu "$DESTRUCTIVE"; then
     "Brace expansion hides how many targets this really has. Re-run once per explicit path so each one can be checked."
   hitn '(~|/Users/[^/[:space:]]+)/[^/[:space:]]*[*?[][^/[:space:]]*/' && deny \
     "A wildcard in the folder name means the guard cannot tell which folders this hits. Name the folder explicitly."
-  ask_on && hit '\$\(|`' && ask \
+  ask_on && hitu '\$\(|`' && ask \
     "This delete/permission change builds its target indirectly, so the guard cannot verify what it points at. Confirm with the user, or re-run with explicit absolute paths."
 fi
 
@@ -305,8 +396,14 @@ hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*(~|/Users/[^/[:spa
 # is named explicitly because on current macOS it *is* the user's whole disk.
 ROOTS='/(System|Library|Applications|Users|usr|bin|sbin|etc|var|private|opt|Volumes|cores|Network)'
 if hitn '(^|[^a-zA-Z0-9_])rm[[:space:]]'; then
+  # Truncate at the next command separator. Without this the target list ran
+  # to end of line and swallowed the arguments of everything that followed:
+  # `rm -rf /tmp/x && mkdir -p /tmp/x/bin; for d in /bin /usr/bin; …` was denied
+  # for "deleting /bin", which appeared only as an argument to a later command.
+  # The delete's targets end where the delete does.
   wipe_targets="$(printf '%s' "$norm" \
-    | sed -E 's/(^|.*[;&|])[[:space:]]*rm[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//')"
+    | sed -E 's/(^|.*[;&|])[[:space:]]*rm[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
+    | sed -E 's/[;&|<>].*$//')"
   for t in $wipe_targets; do
     case "$t" in -*) continue ;; esac
     printf '%s' "$t" | grep -qE "^(/|/\*|~/\*|/Users/[^/[:space:]]+/\*|/System/Volumes/Data/?\*?|${ROOTS}/?\*?)$" && deny \
@@ -343,9 +440,14 @@ fi
 # `build` only reaches this line when it sits outside user content.
 ARTIFACT='(node_modules|target|build|dist|out|\.next|\.nuxt|\.turbo|\.parcel-cache|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|venv|\.venv|\.tox|\.gradle|Pods|DerivedData|coverage|\.cache|vendor|bin/Debug|bin/Release|obj)'
 
-if hit '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)'; then
+if hitu '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)'; then
   # Every target must be a known artefact; one unrecognised path re-arms it.
-  targets="$(printf '%s' "$norm" | sed -E 's/(^|.*[;&|])[[:space:]]*rm[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' )"
+  # Same truncation as the whole-tree rule above: a target list that ran to end
+  # of line pulled in the arguments of later commands, so `rm -rf node_modules
+  # && ls ~/code` counted `~/code` as a delete target and re-armed the prompt.
+  targets="$(printf '%s' "$norm" \
+    | sed -E 's/(^|.*[;&|])[[:space:]]*rm[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
+    | sed -E 's/[;&|<>].*$//')"
   unknown=0
   for t in $targets; do
     case "$t" in -*) continue ;; esac
@@ -360,12 +462,19 @@ if hit '(^|[^a-zA-Z0-9_])rm[[:space:]]+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)'; t
   fi
 fi
 
-ask_on && hit '(^|[^a-zA-Z0-9_])find[[:space:]]' && hit '[[:space:]]-delete([[:space:]]|$)' && ask \
+ask_on && hitu '(^|[^a-zA-Z0-9_])find[[:space:]]' && hitu '[[:space:]]-delete([[:space:]]|$)' && ask \
   "find -delete removes every match with no undo — confirm the scope with the user."
 
-ask_on && hit 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && ask \
+ask_on && hitu 'xargs[[:space:]]+(-[^[:space:]]+[[:space:]]+)*rm([[:space:]]|$)' && ask \
   "Piping a file list into rm has no undo — confirm the scope with the user."
 
+# The three pipe-an-installer-into-a-shell rules deliberately keep reading the
+# RAW command, unlike every other ask rule. A pipeline inside quotes is almost
+# always real — `ssh host 'bash <(curl …)'` runs an installer on a machine this
+# guard cannot follow — whereas prose containing a literal pipe-to-shell is
+# rare. Converting these to the prose-aware copy silently dropped the remote
+# case. A spurious prompt on prose is noise; a missed prompt here is a machine
+# installing unreviewed code.
 ask_on && hit '(curl|wget)[^|;&]*\|[^|]*(ba|z|da|k)?sh([[:space:]]|$)' && ask \
   "This pipes an installer from the internet straight into a shell. Download it first, tell the user in one sentence what it installs, then run the reviewed file."
 
@@ -375,22 +484,22 @@ ask_on && hit '\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|da|k)?sh([[:space:]]|$)' &
 ask_on && hit '<\([[:space:]]*(curl|wget)' && ask \
   "This runs a downloaded script through process substitution, which hides the content from inspection just like piping to a shell. Download it first, tell the user what it installs, then run the reviewed file."
 
-ask_on && hit '(^|[^a-zA-Z0-9_])eval[[:space:]]' && ask \
+ask_on && hitu '(^|[^a-zA-Z0-9_])eval[[:space:]]' && ask \
   "eval executes constructed text the guard cannot inspect. Run the steps directly instead, or confirm with the user."
 
-ask_on && hit 'do[[:space:]]+shell[[:space:]]+script' && ask \
+ask_on && hitu 'do[[:space:]]+shell[[:space:]]+script' && ask \
   "AppleScript reaching back into the shell bypasses command inspection. Run the shell part directly so it can be checked."
 
 ask_on && hit '(python3?|perl|ruby|node)[[:space:]]+(-[a-zA-Z[:space:]]+)*-?-(c|e|eval)[[:space:]]' && hit '(os\.system|subprocess|popen|child_process|execSync|spawnSync)' && ask \
   "This inline script shells out from inside an interpreter, which bypasses command inspection. Run the shell command directly, or confirm with the user."
 
-ask_on && hit 'softwareupdate[[:space:]]+(-[a-zA-Z]*i[a-zA-Z]*|--install)' && ask \
+ask_on && hitu 'softwareupdate[[:space:]]+(-[a-zA-Z]*i[a-zA-Z]*|--install)' && ask \
   "System updates can restart the machine and take a long time — the user should explicitly approve this."
 
-ask_on && hit 'launchctl[[:space:]]+(bootout|unload)[[:space:]]' && ask \
+ask_on && hitu 'launchctl[[:space:]]+(bootout|unload)[[:space:]]' && ask \
   "Disabling a startup item. Explain to the user in plain language what this program does before switching it off."
 
-ask_on && hit '(^|[^a-zA-Z0-9_])defaults[[:space:]]+delete' && ask \
+ask_on && hitu '(^|[^a-zA-Z0-9_])defaults[[:space:]]+delete' && ask \
   "This erases an app's entire settings. Confirm with the user, and name the app in plain language."
 
 exit 0
